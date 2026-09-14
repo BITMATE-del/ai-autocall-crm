@@ -23,6 +23,7 @@ export async function updateSession(request: NextRequest) {
   const userId = data?.claims?.sub as string | undefined
   const path = request.nextUrl.pathname
   const publicPath = path.startsWith('/login') || path.startsWith('/auth')
+  const setupPath = path.startsWith('/onboarding') || path.startsWith('/join')
 
   if (!userId && !publicPath) {
     const url = request.nextUrl.clone()
@@ -30,7 +31,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (userId && !publicPath && !path.startsWith('/onboarding')) {
+  if (userId && !publicPath && !setupPath) {
     const { data: profile } = await supabase.from('autocall_profiles').select('id').eq('id', userId).maybeSingle()
     if (!profile) {
       const url = request.nextUrl.clone()
