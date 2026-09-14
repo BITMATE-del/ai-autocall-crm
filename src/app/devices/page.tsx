@@ -12,7 +12,8 @@ function ago(value:string|null){
   return new Date(value).toLocaleString('ko-KR')
 }
 
-export default async function Page(){
+export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+  const params=await searchParams
   const supabase=(await createClient()) as any
   const [{data:lines},{data:devices},{data:queue},{data:events}]=await Promise.all([
     supabase.from('outbound_lines').select('id,label,phone_e164,provider,status,verified,created_at').order('created_at',{ascending:false}),
@@ -35,6 +36,9 @@ export default async function Page(){
       <div className="muted">표시 수치와 상태는 테스트 샘플이 아니라 현재 회사의 실제 DB/Agent 상태만 사용합니다.</div>
       <div className={`badge ${connected?'badgeGreen':'badgeAmber'}`}>연결 {connected} · 발신중 {calling}</div>
     </div>
+
+    {params.ok&&<div className="card section" style={{padding:14,borderColor:'#86efac',background:'#f0fdf4',color:'#166534'}}><strong>완료</strong> · {params.ok}</div>}
+    {params.error&&<div className="card section" style={{padding:14,borderColor:'#fecaca',background:'#fef2f2',color:'#b91c1c'}}><strong>처리 실패</strong> · {params.error}</div>}
 
     <GatewayTestCall registeredDevices={(devices||[]).length} onlineDevices={connected}/>
 
@@ -78,7 +82,7 @@ export default async function Page(){
         <div className="toolbar" style={{display:'grid'}}>
           <input className="input" name="label" placeholder="회선명 (예: 단말1 SIM)" required/>
           <input className="input" name="phone" placeholder="실제 사용권한이 있는 발신번호" required/>
-          <input className="input" name="provider" placeholder="통신사 (선택)"/>
+          <input className="input" name="provider" placeholder="통신사 또는 알뜰폰 망 (선택)"/>
           <label className="muted" style={{fontSize:13}}><input type="checkbox" name="verified" required/> 실제 소유/사용권한 확인</label>
           <button className="btn btnPrimary" type="submit">회선 등록</button>
         </div>
