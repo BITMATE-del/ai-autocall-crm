@@ -1,3 +1,17 @@
 import { Sidebar } from '@/components/sidebar'
-const staff=[['김대리','100','83','12','5'],['박과장','150','118','21','11'],['이대리','80','64','9','7']]
-export default function Page(){return <div className="shell"><Sidebar/><main className="main"><div className="topbar"><div><div className="eyebrow">Assignment</div><h1 className="title">DB 배정관리</h1><div className="muted">수동 선택·지정수량·균등·팀별 배정을 지원합니다.</div></div><button className="btn btnPrimary">자동배분 실행</button></div><div className="grid"><div className="card"><div className="kpiLabel">미배정</div><div className="kpi">384</div></div><div className="card"><div className="kpiLabel">오늘 배정</div><div className="kpi">1,020</div></div><div className="card"><div className="kpiLabel">상담중</div><div className="kpi">268</div></div><div className="card"><div className="kpiLabel">회수대기</div><div className="kpi">14</div></div></div><div className="card section"><table className="dataTable"><thead><tr><th>직원</th><th>배정</th><th>상담대기</th><th>완료</th><th>재통화</th></tr></thead><tbody>{staff.map(r=><tr key={r[0]}><td><strong>{r[0]}</strong></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td></tr>)}</tbody></table></div></main></div>}
+import { AssignmentManager } from '@/components/assignment-manager'
+import { createClient } from '@/lib/supabase/server'
+
+export default async function Page(){
+  const supabase=await createClient()
+  const [{data:employees},{data:rows},{count:unassigned},{count:inCounseling},{count:completed},{count:callbacks}]=await Promise.all([
+    supabase.from('employees').select('id,name').eq('status','ACTIVE').order('name'),
+    supabase.from('leads').select('id,customer_name,phone_e164,status,current_assignee_id').not('current_assignee_id','is',null).order('updated_at',{ascending:false}).limit(200),
+    supabase.from('consent_pool').select('*',{count:'exact',head:true}).is('current_assignee_id',null),
+    supabase.from('leads').select('*',{count:'exact',head:true}).eq('status','IN_COUNSELING'),
+    supabase.from('leads').select('*',{count:'exact',head:true}).eq('status','COMPLETED'),
+    supabase.from('callbacks').select('*',{count:'exact',head:true}).eq('status','PENDING')
+  ])
+  const kpis=[['미배정 Pool',String(unassigned||0)],['상담중',String(inCounseling||0)],['완료',String(completed||0)],['재통화 예정',String(callbacks||0)]]
+  return <div className="shell"><Sidebar/><main className="main"><div className="topbar"><div><div className="eyebrow">Assignment</div><h1 className="title">DB 배정관리</h1><div className="muted">현재 배정 고객을 직원 간 재배정하거나 중앙 Pool로 회수합니다.</div></div></div><div className="grid">{kpis.map(([n,v])=><div className="card" key={n}><div className="kpiLabel">{n}</div><div className="kpi">{v}</div></div>)}</div><AssignmentManager rows={rows||[]} employees={employees||[]}/></main></div>
+}
