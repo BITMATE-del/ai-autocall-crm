@@ -1,0 +1,5 @@
+-- Applied to production project mbfotggkrcdxwevyvpvl on 2026-09-14.
+-- Adds company_settings, subscription plans/subscriptions, call scenarios/versioning,
+-- call_logs, usage/download logs, API keys, webhooks/deliveries, system logs,
+-- notifications, RLS policies and admin RPCs for SaaS/white-label/integrations.
+-- Canonical production schema should be pulled with Supabase CLI before local replay.

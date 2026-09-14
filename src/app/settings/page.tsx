@@ -1,2 +1,11 @@
+'use client'
+import { useEffect,useState } from 'react'
 import { PageShell } from '@/components/page-shell'
-export default function Page(){return <PageShell title="설정"><div className="card"><div className="empty">회사 설정·권한·정책을 관리합니다.</div></div></PageShell>}
+import { createClient } from '@/lib/supabase/client'
+
+export default function Page(){
+ const supabase=createClient(); const [form,setForm]=useState({brand_name:'AI AUTOCALL CRM',logo_url:'',primary_color:'#111827',timezone:'Asia/Seoul',locale:'ko-KR'}); const [plan,setPlan]=useState<any>(null)
+ useEffect(()=>{(async()=>{const {data:s}=await supabase.from('company_settings').select('*').maybeSingle(); if(s)setForm({...form,...s}); const {data:p}=await supabase.from('company_subscriptions').select('status,starts_at,ends_at,subscription_plans(name,code,employee_limit,monthly_call_limit,monthly_lead_limit)').maybeSingle(); setPlan(p)})()},[])
+ const save=async()=>{const {error}=await supabase.rpc('save_company_settings',{p_brand_name:form.brand_name,p_logo_url:form.logo_url,p_primary_color:form.primary_color,p_timezone:form.timezone,p_locale:form.locale}); alert(error?error.message:'저장되었습니다.')}
+ return <PageShell title="설정" eyebrow="Company"><div className="grid"><div className="card"><h2>화이트라벨 / 회사 설정</h2><div className="formGrid"><label>브랜드명<input className="input" value={form.brand_name??''} onChange={e=>setForm({...form,brand_name:e.target.value})}/></label><label>로고 URL<input className="input" value={form.logo_url??''} onChange={e=>setForm({...form,logo_url:e.target.value})}/></label><label>대표 색상<input className="input" value={form.primary_color??''} onChange={e=>setForm({...form,primary_color:e.target.value})}/></label><label>타임존<input className="input" value={form.timezone??''} onChange={e=>setForm({...form,timezone:e.target.value})}/></label><label>언어<input className="input" value={form.locale??''} onChange={e=>setForm({...form,locale:e.target.value})}/></label></div><button className="btn btnPrimary" onClick={save}>설정 저장</button></div><div className="card"><h2>라이선스</h2>{plan?<><div className="kpi">{(plan as any).subscription_plans?.name??'Plan'}</div><div className="muted">상태: {plan.status}</div><div className="muted">직원 한도: {(plan as any).subscription_plans?.employee_limit??'무제한'}</div><div className="muted">월 콜 한도: {(plan as any).subscription_plans?.monthly_call_limit??'무제한'}</div></>:<div className="empty">구독 플랜이 아직 연결되지 않았습니다.</div>}</div></div></PageShell>
+}
