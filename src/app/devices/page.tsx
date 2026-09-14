@@ -1,5 +1,6 @@
 import { PageShell } from '@/components/page-shell'
 import { GatewayAutoRefresh } from '@/components/gateway-auto-refresh'
+import { GatewayTestCall } from '@/components/gateway-test-call'
 import { createClient } from '@/lib/supabase/server'
 import { addDevice, addOutboundLine, resetDevicePairing } from './actions'
 
@@ -31,11 +32,13 @@ export default async function Page(){
   return <PageShell title="발신 관리" eyebrow="Android Gateway">
     <GatewayAutoRefresh intervalMs={5000}/>
     <div className="topbar" style={{marginTop:-8}}>
-      <div className="muted">API 사업자 계약 없이 회사 소유 SIM 단말을 Gateway로 연결하는 MVP 운영 콘솔입니다.</div>
-      <div className="badge badgeGreen">연결 {connected} · 발신중 {calling}</div>
+      <div className="muted">웹 Queue → Android Agent → 실제 SIM 발신까지 검증하는 운영 콘솔입니다.</div>
+      <div className={`badge ${connected?'badgeGreen':'badgeAmber'}`}>연결 {connected} · 발신중 {calling}</div>
     </div>
 
-    <div className="grid">
+    <GatewayTestCall/>
+
+    <div className="grid section">
       <div className="card"><div className="kpiLabel">전체 Queue</div><div className="kpi">{q.length}</div></div>
       <div className="card"><div className="kpiLabel">동의</div><div className="kpi">{consented}</div></div>
       <div className="card"><div className="kpiLabel">미동의 / DNC</div><div className="kpi">{declined}</div></div>
