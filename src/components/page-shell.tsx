@@ -1,0 +1,2 @@
+import { Sidebar } from './sidebar'
+export function PageShell({title,eyebrow='Operations',children}:{title:string,eyebrow?:string,children:React.ReactNode}){return <div className="shell"><Sidebar/><main className="main"><div className="topbar"><div><div className="eyebrow">{eyebrow}</div><h1 className="title">{title}</h1><div className="muted">AI AUTOCALL CRM SaaS</div></div></div>{children}</main></div>}
