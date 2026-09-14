@@ -10,15 +10,27 @@ export type NormalizedProviderEvent = {
   raw: unknown
 }
 
+export type StartCallInput = {
+  queueId: string
+  from: string
+  to: string
+  webhookUrl: string
+  ttsText?: string
+}
+
 export interface TelephonyProvider {
   name: string
-  startCall(input: { queueId:string; from:string; to:string; webhookUrl:string; ttsText?:string }): Promise<{ providerCallId:string }>
+  startCall(input: StartCallInput): Promise<{ providerCallId:string }>
   normalizeWebhook(payload: unknown): NormalizedProviderEvent
 }
 
 export class ManualProvider implements TelephonyProvider {
   name = 'manual'
-  async startCall() { throw new Error('No telephony provider configured') }
+
+  async startCall(_input: StartCallInput): Promise<{ providerCallId: string }> {
+    throw new Error('No telephony provider configured')
+  }
+
   normalizeWebhook(payload: any): NormalizedProviderEvent {
     if (!payload?.queue_id || !payload?.status) throw new Error('Invalid provider payload')
     return {
@@ -33,7 +45,7 @@ export class ManualProvider implements TelephonyProvider {
   }
 }
 
-export function getProvider(name:string): TelephonyProvider {
+export function getProvider(_name:string): TelephonyProvider {
   // Vendor adapters are added here after credentials/provider selection.
   return new ManualProvider()
 }
