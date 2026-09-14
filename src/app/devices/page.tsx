@@ -32,11 +32,11 @@ export default async function Page(){
   return <PageShell title="발신 관리" eyebrow="Android Gateway">
     <GatewayAutoRefresh intervalMs={5000}/>
     <div className="topbar" style={{marginTop:-8}}>
-      <div className="muted">웹 Queue → Android Agent → 실제 SIM 발신까지 검증하는 운영 콘솔입니다.</div>
+      <div className="muted">표시 수치와 상태는 테스트 샘플이 아니라 현재 회사의 실제 DB/Agent 상태만 사용합니다.</div>
       <div className={`badge ${connected?'badgeGreen':'badgeAmber'}`}>연결 {connected} · 발신중 {calling}</div>
     </div>
 
-    <GatewayTestCall/>
+    <GatewayTestCall registeredDevices={(devices||[]).length} onlineDevices={connected}/>
 
     <div className="grid section">
       <div className="card"><div className="kpiLabel">전체 Queue</div><div className="kpi">{q.length}</div></div>
@@ -47,7 +47,7 @@ export default async function Page(){
     </div>
 
     <div className="card section">
-      <div className="sectionHead"><div><h2>단말 현황</h2><div className="muted">Agent 앱에서 페어링 코드를 입력하면 전용 토큰으로 자동 연결됩니다.</div></div><span className="badge">{devices?.length||0}대</span></div>
+      <div className="sectionHead"><div><h2>단말 현황</h2><div className="muted">단말 등록 → APK 페어링 → ONLINE 확인 순서로 진행합니다.</div></div><span className="badge">{devices?.length||0}대</span></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:14}}>
         {(devices||[]).map((d:any)=>{
           const online=d.last_seen_at&&Date.now()-new Date(d.last_seen_at).getTime()<30000
@@ -68,7 +68,7 @@ export default async function Page(){
             </form>
           </div>
         })}
-        {(!devices||devices.length===0)&&<div className="empty">등록된 Gateway 단말이 없습니다.</div>}
+        {(!devices||devices.length===0)&&<div className="empty">등록된 Gateway 단말이 없습니다. 아래에서 실제 테스트할 Android 단말부터 등록하세요.</div>}
       </div>
     </div>
 
@@ -79,7 +79,7 @@ export default async function Page(){
           <input className="input" name="label" placeholder="회선명 (예: 단말1 SIM)" required/>
           <input className="input" name="phone" placeholder="실제 사용권한이 있는 발신번호" required/>
           <input className="input" name="provider" placeholder="통신사 (선택)"/>
-          <label className="muted" style={{fontSize:13}}><input type="checkbox" name="verified"/> 실제 소유/사용권한 확인</label>
+          <label className="muted" style={{fontSize:13}}><input type="checkbox" name="verified" required/> 실제 소유/사용권한 확인</label>
           <button className="btn btnPrimary" type="submit">회선 등록</button>
         </div>
       </form>
@@ -88,8 +88,9 @@ export default async function Page(){
         <div className="toolbar" style={{display:'grid'}}>
           <input className="input" name="name" placeholder="단말 이름 (예: 단말 1)" required/>
           <select className="select" name="device_type"><option value="ANDROID">Android Agent</option><option value="GATEWAY">Dedicated Gateway</option></select>
-          <select className="select" name="line_id"><option value="">발신번호 미지정</option>{(lines||[]).map((l:any)=><option key={l.id} value={l.id}>{l.label} · {l.phone_e164}</option>)}</select>
-          <button className="btn btnPrimary" type="submit">단말 등록 + 코드 발급</button>
+          <select className="select" name="line_id" required><option value="">발신번호 선택</option>{(lines||[]).map((l:any)=><option key={l.id} value={l.id}>{l.label} · {l.phone_e164}</option>)}</select>
+          <button className="btn btnPrimary" type="submit" disabled={!lines?.length}>단말 등록 + 코드 발급</button>
+          {!lines?.length&&<div className="muted" style={{fontSize:12}}>먼저 왼쪽에서 실제 SIM/발신번호를 등록해야 단말 등록 버튼이 활성화됩니다.</div>}
         </div>
       </form>
     </div>
@@ -98,6 +99,7 @@ export default async function Page(){
       <div className="sectionHead"><h2>최근 Gateway 이벤트</h2><span className="badge">자동 새로고침 5초</span></div>
       <table className="dataTable"><thead><tr><th>시간</th><th>단말</th><th>이벤트</th><th>Queue</th></tr></thead><tbody>
         {(events||[]).map((e:any)=><tr key={e.id}><td>{new Date(e.created_at).toLocaleString('ko-KR')}</td><td>{String(e.device_id).slice(0,8)}</td><td><span className="badge">{e.event_type}</span></td><td>{e.queue_id?String(e.queue_id).slice(0,8):'-'}</td></tr>)}
+        {(!events||events.length===0)&&<tr><td colSpan={4}><div className="empty">실제 단말 이벤트가 아직 없습니다.</div></td></tr>}
       </tbody></table>
     </div>
   </PageShell>
