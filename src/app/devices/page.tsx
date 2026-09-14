@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { PageShell } from '@/components/page-shell'
 import { GatewayAutoRefresh } from '@/components/gateway-auto-refresh'
 import { GatewayTestCall } from '@/components/gateway-test-call'
@@ -15,6 +16,15 @@ function ago(value:string|null){
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
   const params=await searchParams
   const supabase=(await createClient()) as any
+
+  const {data:claims}=await supabase.auth.getClaims()
+  const userId=claims?.claims?.sub as string|undefined
+  if(!userId) redirect('/login?next=/devices&reason=session')
+
+  const {data:profile}=await supabase.from('autocall_profiles').select('company_id,role,display_name').eq('id',userId).maybeSingle()
+  if(!profile?.company_id) redirect('/onboarding')
+  if(!['company_admin','team_lead','platform_admin'].includes(profile.role)) redirect('/dashboard')
+
   const [{data:lines},{data:devices},{data:queue},{data:events}]=await Promise.all([
     supabase.from('outbound_lines').select('id,label,phone_e164,provider,status,verified,created_at').order('created_at',{ascending:false}),
     supabase.from('call_devices').select('id,name,device_type,status,last_seen_at,outbound_line_id,created_at,pairing_code,claimed_at,agent_version,model,android_version,battery_pct,charging,current_queue_id').order('created_at',{ascending:false}),
