@@ -1,1 +1,0 @@
-import type { Metadata } from "next";import "./globals.css";export const metadata:Metadata={title:"K-MARKETS | 국내주식 · CFD 트레이딩",description:"국내주식 및 CFD 트레이딩 UI 시안 — 가상 데이터 데모"};export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="ko"><body>{children}</body></html>}
