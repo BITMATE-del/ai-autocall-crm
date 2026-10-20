@@ -16,3 +16,14 @@ export async function authenticate(username:string,password:string){await init()
 export async function createSession(u:{id:string;username:string}){const token=await new SignJWT({username:u.username}).setProtectedHeader({alg:"HS256"}).setSubject(u.id).setIssuedAt().setExpirationTime("7d").sign(secret());(await cookies()).set("km_session",token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:604800})}
 export async function currentUser(){try{const token=(await cookies()).get("km_session")?.value;if(!token)return null;const {payload}=await jwtVerify(token,secret());return {id:payload.sub,username:String(payload.username||"")}}catch{return null}}
 export async function logout(){(await cookies()).delete("km_session")}
+
+/** Shared PostgreSQL-backed throttling across all Railway instances. */
+export async function throttle(scope:string,identifier:string,limit:number,windowSeconds:number){
+ await init();
+ await database().query("CREATE TABLE IF NOT EXISTS km_auth_rate_limits(key_hash TEXT PRIMARY KEY,attempts INTEGER NOT NULL DEFAULT 0,reset_at TIMESTAMPTZ NOT NULL)");
+ const digest=createHash("sha256").update(scope+":"+identifier).digest("hex");
+ const result=await database().query(
+ "INSERT INTO km_auth_rate_limits(key_hash,attempts,reset_at) VALUES($1,1,NOW()+($2 * INTERVAL '1 second')) ON CONFLICT(key_hash) DO UPDATE SET attempts=CASE WHEN km_auth_rate_limits.reset_at<=NOW() THEN 1 ELSE km_auth_rate_limits.attempts+1 END,reset_at=CASE WHEN km_auth_rate_limits.reset_at<=NOW() THEN NOW()+($2 * INTERVAL '1 second') ELSE km_auth_rate_limits.reset_at END RETURNING attempts,EXTRACT(EPOCH FROM (reset_at-NOW())) AS wait",
+ [digest,windowSeconds]);
+ return {allowed:Number(result.rows[0].attempts)<=limit,retryAfter:Math.max(1,Math.ceil(Number(result.rows[0].wait)))};
+}
