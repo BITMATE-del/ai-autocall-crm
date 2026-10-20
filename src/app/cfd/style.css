@@ -11,3 +11,11 @@
 .ct .previewBadge{background:#e8eefc;color:#4462c9;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:800}
 .ct .profileCircle{width:31px;height:31px;background:#dde4fb;color:#4e67ca;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px}
 @media(max-width:760px){.ct .unifiedHeader{padding:0 12px;gap:10px;flex-wrap:wrap;height:auto;min-height:56px}.ct .unifiedNav{order:3;width:100%;height:43px;gap:16px;justify-content:space-between;overflow-x:auto}.ct .unifiedNav a,.ct .unifiedNav button{font-size:11px}.ct .unifiedRight{min-width:0}.ct .previewBadge{display:none}}
+
+/* Trade-history tabs: pixel-aligned with section heading, no inherited trade-duration button geometry */
+.ct .records>.heading{height:55px;min-height:55px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-sizing:border-box}
+.ct .records>.heading>b{line-height:20px;margin:0}
+.ct .records .recordTabs{height:34px;display:inline-flex;align-items:stretch;gap:6px;margin:0;padding:0;flex-shrink:0}
+.ct .records .recordTabs button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-width:79px;height:34px;line-height:1.15;padding:0 12px;margin:0;border:1px solid #e4eaf3;border-radius:7px;background:#fff;color:#8795aa;font-size:12px;font-weight:700;white-space:nowrap}
+.ct .records .recordTabs button.active{border-color:#7994ed;background:#edf2ff;color:#4763dc}
+@media(max-width:440px){.ct .records>.heading{padding:0 12px}.ct .records .recordTabs button{min-width:65px;padding:0 8px;font-size:11px}}
