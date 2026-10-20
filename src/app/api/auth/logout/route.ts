@@ -1,0 +1,1 @@
+import {NextRequest,NextResponse} from "next/server";import {logout} from "@/lib/auth";export async function POST(req:NextRequest){const origin=req.headers.get("origin");if(origin&&new URL(origin).host!==req.nextUrl.host)return NextResponse.json({error:"잘못된 요청입니다."},{status:403});await logout();return NextResponse.json({ok:true})}
