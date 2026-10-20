@@ -1,0 +1,5 @@
+import {NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+const allowed=new Set(["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT"]);
+const host="https://data-api.binance.vision";
+export async function GET(){try{const r=await fetch(host+"/api/v3/ticker/24hr",{cache:"no-store",signal:AbortSignal.timeout(7000)});if(!r.ok)throw new Error(String(r.status));const rows=await r.json();const markets=rows.filter((x:{symbol:string})=>allowed.has(x.symbol)).map((x:{symbol:string;lastPrice:string;priceChangePercent:string})=>({symbol:x.symbol,base:x.symbol.replace("USDT",""),price:Number(x.lastPrice),change:Number(x.priceChangePercent)}));return NextResponse.json({markets},{headers:{"Cache-Control":"no-store"}})}catch{return NextResponse.json({markets:[],error:"PRICE_FEED_UNAVAILABLE"},{status:503})}}
