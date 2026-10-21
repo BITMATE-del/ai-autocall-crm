@@ -1,4 +1,4 @@
-const mapping:Record<string,string>={XAUUSD:"XAU/USD",XAGUSD:"XAG/USD"};
+const mapping:Record<string,string>={XAUUSD:"XAU/USD"};
 const freshMs=180000;
 export const metalSymbol=(symbol:string)=>mapping[symbol]||null;
 async function data(path:string,params:Record<string,string>){const key=process.env.TWELVE_DATA_API_KEY;if(!key)throw Error("FEED_NOT_CONFIGURED");const u=new URL("https://api.twelvedata.com/"+path);for(const [k,v] of Object.entries(params))u.searchParams.set(k,v);const r=await fetch(u,{headers:{"Authorization":"apikey "+key},cache:"no-store",signal:AbortSignal.timeout(7000)});const d=await r.json().catch(()=>null);if(!r.ok)throw Error("FEED_HTTP_"+r.status+(d?.code?"_CODE_"+d.code:""));if(d?.status==="error"||d?.code)throw Error("FEED_RESPONSE_"+(d.code||"ERROR"));return d}
