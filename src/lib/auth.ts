@@ -39,10 +39,13 @@ export async function bootstrapAdmin(password:string){
   await c.query("BEGIN");
   await c.query("SELECT pg_advisory_xact_lock(82110512)");
   await c.query("CREATE TABLE IF NOT EXISTS km_admin_roles(user_id UUID PRIMARY KEY REFERENCES km_users(id),role TEXT NOT NULL DEFAULT 'SUPER_ADMIN',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-  const existing=await c.query("SELECT id FROM km_users WHERE lower(username)='admin' LIMIT 1");
+  const existing=await c.query("SELECT id,password_hash FROM km_users WHERE lower(username)='admin' LIMIT 1");
   if(!existing.rowCount){
    const created=await c.query("INSERT INTO km_users(email,username,password_hash) VALUES($1,'admin',$2) RETURNING id",["admin@local.kmarkets.invalid",hash]);
-   await c.query("INSERT INTO km_admin_roles(user_id) VALUES($1)",[created.rows[0].id]);
+   await c.query("INSERT INTO km_admin_roles(user_id) VALUES($1) ON CONFLICT DO NOTHING",[created.rows[0].id]);
+  }else if(await bcrypt.compare(password,existing.rows[0].password_hash)){
+   // Recover admin role only when the existing account's password matches the configured bootstrap credential.
+   await c.query("INSERT INTO km_admin_roles(user_id) VALUES($1) ON CONFLICT DO NOTHING",[existing.rows[0].id]);
   }
   await c.query("COMMIT");
  }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
