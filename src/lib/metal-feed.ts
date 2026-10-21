@@ -15,3 +15,9 @@ export async function metalCurrent(symbol:string){
  return {price,timestamp:at,source:"TWELVE_DATA_1MIN",symbol:tv};
 }
 export async function metalSettlement(symbol:string,expiry:number){const tv=metalSymbol(symbol);if(!tv)throw Error("UNSUPPORTED_SYMBOL");if(expiry>Date.now()-65000)throw Error("CANDLE_PENDING");const d=await data("time_series",{symbol:tv,interval:"1min",timezone:"UTC",start_date:new Date(expiry-180000).toISOString().slice(0,19),end_date:new Date(expiry+120000).toISOString().slice(0,19),outputsize:"10"});const values=Array.isArray(d.values)?d.values:[];const rows=values.map((x:{datetime:string;close:string})=>({at:Date.parse(x.datetime.replace(" ","T")+"Z"),price:Number(x.close)})).filter((x:{at:number;price:number})=>Number.isFinite(x.at)&&x.price>0&&x.at<=expiry);rows.sort((a:{at:number},b:{at:number})=>b.at-a.at);const candidate=rows[0];if(!candidate||expiry-candidate.at>120000)throw Error("SETTLEMENT_CANDLE_UNAVAILABLE");return candidate.price}
+
+export async function metalSymbolSearch(term:string){
+ const d=await data("symbol_search",{symbol:term,outputsize:"10"});
+ const values=Array.isArray(d.data)?d.data:[];
+ return values.filter((v:{symbol?:string;instrument_name?:string;type?:string})=>/XAG|SILVER/i.test(String(v.symbol||"")+" "+String(v.instrument_name||""))).slice(0,8).map((v:{symbol?:string;instrument_name?:string;type?:string})=>({symbol:v.symbol,name:v.instrument_name,type:v.type}));
+}
