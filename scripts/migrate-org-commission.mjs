@@ -1,0 +1,1 @@
+import pg from "pg";import {readFileSync} from "node:fs";const db=new pg.Client({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:7000,statement_timeout:30000});await db.connect();try{await db.query(readFileSync("migrations/031_org_commission.sql","utf8"));console.log("K-MARKETS transfer and commission migration applied")}finally{await db.end()}
