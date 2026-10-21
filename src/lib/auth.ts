@@ -16,7 +16,7 @@ if(input.referral){const code=(await client.query("SELECT c.id,c.agent_id,c.orga
 await client.query("INSERT INTO km_member_attributions(user_id,agent_id,sub_hq_id,organization_id,referral_code_id) VALUES($1,$2,$3,$4,$5)",[u.id,assignment.agent,assignment.subhq,assignment.org,assignment.code]);await client.query("INSERT INTO km_member_attribution_history(user_id,previous_org,next_org,reason) VALUES($1,NULL,$2,$3)",[u.id,assignment.org,assignment.code?"SIGNUP_REFERRAL":"DIRECT_SIGNUP"]);
 await client.query("COMMIT");return u}catch(e){await client.query("ROLLBACK");throw e}finally{client.release()}}
 export async function authenticate(username:string,password:string){await init();const r=await database().query("SELECT id,username,password_hash FROM km_users WHERE username=$1",[username]);const u=r.rows[0];if(!u||!(await bcrypt.compare(password,u.password_hash)))return null;return {id:u.id,username:u.username}}
-export async function createSession(u:{id:string;username:string}){const token=await new SignJWT({username:u.username}).setProtectedHeader({alg:"HS256"}).setSubject(u.id).setIssuedAt().setExpirationTime("7d").sign(secret());(await cookies()).set("km_session",token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:604800})}
+export async function createSession(u:{id:string;username:string},adminConsole=false){const token=await new SignJWT({username:u.username,adminConsole}).setProtectedHeader({alg:"HS256"}).setSubject(u.id).setIssuedAt().setExpirationTime("7d").sign(secret());(await cookies()).set("km_session",token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:604800})}
 export async function currentUser(){try{const token=(await cookies()).get("km_session")?.value;if(!token)return null;const {payload}=await jwtVerify(token,secret());return {id:payload.sub,username:String(payload.username||"")}}catch{return null}}
 export async function logout(){(await cookies()).delete("km_session")}
 
@@ -54,3 +54,6 @@ export async function bootstrapAdmin(password:string){
  }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
 }
 export async function isAdmin(id:string|undefined){if(!id)return false;const allow=(process.env.KM_ADMIN_USER_IDS||"").split(",").map(x=>x.trim());if(allow.includes(id))return true;try{const r=await database().query("SELECT 1 FROM km_admin_roles WHERE user_id=$1 LIMIT 1",[id]);return !!r.rowCount}catch{return false}}
+
+/** Verify a signed admin-login session locally; sensitive APIs still check the live DB role. */
+export async function currentAdminSession(){try{const token=(await cookies()).get("km_session")?.value;if(!token)return null;const {payload}=await jwtVerify(token,secret());if(payload.adminConsole!==true||!payload.sub)return null;return {id:payload.sub,username:String(payload.username||"")}}catch{return null}}
