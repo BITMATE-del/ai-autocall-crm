@@ -1,5 +1,5 @@
-import ProfileShortcut from "@/components/ProfileShortcut";
 "use client";
+import ProfileShortcut from "@/components/ProfileShortcut";
 import {useEffect,useRef,useState,useMemo} from "react";
 import {createChart,CandlestickSeries,HistogramSeries,LineSeries,ColorType,type IChartApi} from "lightweight-charts";
 import {Search,Bell,Star,Settings2,ChevronDown,Activity,SlidersHorizontal,ArrowUpRight,Wallet,LayoutGrid,Menu,ShieldCheck} from "lucide-react";
