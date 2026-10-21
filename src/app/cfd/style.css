@@ -23,3 +23,6 @@
 /* Match the center-aligned site navigation across all screens */
 @media(min-width:761px){.ct header.unifiedHeader{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:16px}.ct .unifiedHeader>.brand{justify-self:start;min-width:0}.ct .unifiedHeader>.unifiedNav{justify-self:center;gap:27px;white-space:nowrap}.ct .unifiedHeader>.unifiedRight{justify-self:end;min-width:0}}
 @media(min-width:761px) and (max-width:1100px){.ct .unifiedHeader>.unifiedNav{gap:13px}.ct .unifiedNav a{padding:0 3px;font-size:12px}}
+
+@media(min-width:761px){.ct .unifiedNav a{font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:13px;font-weight:600;line-height:1.35;letter-spacing:0;color:#8b94a4;border-bottom:2px solid transparent;text-decoration:none;white-space:nowrap;box-sizing:border-box;display:flex;align-items:center;justify-content:center;height:100%;padding:0 6px}.ct .unifiedNav a.navSelected{font-weight:700;color:#304cc6;border-bottom-color:#4b64db}}
+@media(min-width:761px) and (max-width:1100px){.ct .unifiedNav a{font-size:12px;padding:0 3px}}
