@@ -1,5 +1,5 @@
-import ProfileShortcut from "@/components/ProfileShortcut";
 "use client";
+import ProfileShortcut from "@/components/ProfileShortcut";
 import Link from "next/link";
 import Script from "next/script";
 import {useEffect,useRef,useState} from "react";
