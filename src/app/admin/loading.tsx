@@ -1,0 +1,1 @@
+export default function Loading(){return <div style={{padding:30,fontFamily:"sans-serif"}}><h2 style={{fontSize:18,color:"#243855"}}>관리자 화면을 불러오는 중입니다.</h2><p style={{fontSize:13,color:"#8a97a9"}}>페이지 응답이 오래 걸리면 새로고침하거나 관리자 로그인 주소로 다시 접속해 주세요.</p><a href="/admin/login" style={{color:"#4b65c9"}}>로그인 화면으로 이동</a></div>}
