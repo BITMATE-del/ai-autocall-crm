@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import Link from "next/link";
 import "./auth.css";
 const banks=["KB국민은행","신한은행","우리은행","하나은행","NH농협은행","IBK기업은행","SC제일은행","카카오뱅크","케이뱅크","토스뱅크","부산은행","대구은행","경남은행","광주은행","전북은행","제주은행","수협은행","우체국","새마을금고","신협"];
@@ -7,7 +7,7 @@ export default function AuthPage(){
 const [mode,setMode]=useState<"register"|"login">("register");
 const [form,setForm]=useState({username:"",password:"",confirm:"",name:"",birth:"",phone:"",referrer:"",bank:"",account:"",holder:""});
 const [consent,setConsent]=useState(false),[error,setError]=useState(""),[busy,setBusy]=useState(false);
-const change=(name:keyof typeof form,value:string)=>setForm(prev=>({...prev,[name]:value}));
+const change=(name:keyof typeof form,value:string)=>setForm(prev=>({...prev,[name]:value}));useEffect(()=>{const ref=new URLSearchParams(window.location.search).get("ref");if(ref&&/^[a-zA-Z0-9_-]{3,40}$/.test(ref))change("referrer",ref)},[]);
 async function submit(e:React.FormEvent){e.preventDefault();setError("");
 if(mode==="register"&&form.password!==form.confirm){setError("비밀번호가 일치하지 않습니다.");return}
 if(mode==="register"&&form.name.trim()!==form.holder.trim()){setError("예금주와 신청자 실명이 일치해야 합니다.");return}
