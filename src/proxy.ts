@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";
+export function proxy(req:NextRequest){const path=req.nextUrl.pathname,admin=process.env.KM_SERVICE_MODE==="admin";const isAdmin=path==="/admin"||path.startsWith("/admin/")||path==="/api/admin"||path.startsWith("/api/admin/");const isAuth=path==="/auth"||path.startsWith("/auth/")||path.startsWith("/api/auth/");if(admin){if(isAdmin||isAuth||path.startsWith("/_next/")||path==="/favicon.ico")return NextResponse.next();return new NextResponse("Not found",{status:404})}if(isAdmin)return new NextResponse("Not found",{status:404});return NextResponse.next()}
+export const config={matcher:["/((?!_next/static|_next/image|favicon.ico).*)"]};
