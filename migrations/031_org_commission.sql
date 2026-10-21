@@ -12,4 +12,9 @@ CREATE TABLE IF NOT EXISTS km_commission_settlements(id UUID PRIMARY KEY DEFAULT
 INSERT INTO km_org_permissions(key,allowed_roles,delegable,risk_level) VALUES('WITHDRAW_HOLD_REQUEST',ARRAY['SUB_HQ','AGENT'],TRUE,'MEDIUM'),('COMMISSION_VIEW',ARRAY['SUB_HQ','AGENT'],TRUE,'LOW'),('COMMISSION_POLICY_EDIT',ARRAY['SUB_HQ'],FALSE,'HIGH'),('MEMBER_ACTIVITY_VIEW',ARRAY['SUB_HQ','AGENT'],TRUE,'LOW') ON CONFLICT(key) DO NOTHING;
 INSERT INTO km_org_membership_history(agent_org_id,parent_org_id,valid_from)
  SELECT o.id,o.parent_id,o.created_at FROM km_organizations o WHERE o.type='AGENT' AND o.parent_id IS NOT NULL ON CONFLICT DO NOTHING;
+-- Review requests only. Never block a withdrawal or change balances automatically.
+CREATE TABLE IF NOT EXISTS km_withdraw_hold_reviews(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),funding_request_id UUID NOT NULL REFERENCES km_funding_requests(id),member_id UUID NOT NULL REFERENCES km_users(id),requester_id UUID NOT NULL REFERENCES km_users(id),requester_org_id UUID NOT NULL REFERENCES km_organizations(id),reason TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'REVIEW_REQUESTED' CHECK(status IN ('REVIEW_REQUESTED','DISMISSED','REVIEWED')),created_at TIMESTAMPTZ NOT NULL DEFAULT now(),reviewed_at TIMESTAMPTZ,reviewed_by UUID REFERENCES km_users(id));
+CREATE INDEX IF NOT EXISTS km_withdraw_hold_by_member ON km_withdraw_hold_reviews(member_id,created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS km_withdraw_hold_one_open ON km_withdraw_hold_reviews(funding_request_id) WHERE status='REVIEW_REQUESTED';
+
 COMMIT;
