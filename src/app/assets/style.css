@@ -9,3 +9,7 @@
 .myBalance>.ticketOpen{position:absolute;top:91px;right:25px;margin:0;padding:10px 14px;background:#ffffff24;border:1px solid #ffffff85;border-radius:8px;color:#fff;font-size:12px;font-weight:750;line-height:1.25;box-shadow:none;white-space:nowrap;z-index:1}
 .myBalance>.ticketOpen:hover{background:#ffffff35}
 @media(max-width:700px){.myBalance>.ticketOpen{position:static;margin:14px 0 0;display:inline-flex;max-width:100%;white-space:normal}.myBalance .balanceActions{margin-top:17px}}
+
+/* Consistent horizontal navigation center, regardless of avatar width */
+@media(min-width:761px){.myHeader{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:16px}.myHeader>.myBrand{justify-self:start;min-width:0}.myHeader>nav{justify-self:center;gap:27px;white-space:nowrap}.myHeader>.myAvatar{justify-self:end}}
+@media(min-width:761px) and (max-width:1100px){.myHeader>nav{gap:13px}.myHeader>nav a{font-size:12px}}

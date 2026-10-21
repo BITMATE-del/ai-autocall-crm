@@ -19,3 +19,7 @@
 .ct .records .recordTabs button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-width:79px;height:34px;line-height:1.15;padding:0 12px;margin:0;border:1px solid #e4eaf3;border-radius:7px;background:#fff;color:#8795aa;font-size:12px;font-weight:700;white-space:nowrap}
 .ct .records .recordTabs button.active{border-color:#7994ed;background:#edf2ff;color:#4763dc}
 @media(max-width:440px){.ct .records>.heading{padding:0 12px}.ct .records .recordTabs button{min-width:65px;padding:0 8px;font-size:11px}}
+
+/* Match the center-aligned site navigation across all screens */
+@media(min-width:761px){.ct header.unifiedHeader{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;column-gap:16px}.ct .unifiedHeader>.brand{justify-self:start;min-width:0}.ct .unifiedHeader>.unifiedNav{justify-self:center;gap:27px;white-space:nowrap}.ct .unifiedHeader>.unifiedRight{justify-self:end;min-width:0}}
+@media(min-width:761px) and (max-width:1100px){.ct .unifiedHeader>.unifiedNav{gap:13px}.ct .unifiedNav a{padding:0 3px;font-size:12px}}
