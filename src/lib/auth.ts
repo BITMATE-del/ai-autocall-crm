@@ -27,3 +27,24 @@ export async function throttle(scope:string,identifier:string,limit:number,windo
  [digest,windowSeconds]);
  return {allowed:Number(result.rows[0].attempts)<=limit,retryAfter:Math.max(1,Math.ceil(Number(result.rows[0].wait)))};
 }
+
+/** One-time owner bootstrap. The password stays only in Railway variables, never in source. */
+export async function bootstrapAdmin(password:string){
+ const initial=process.env.KM_ADMIN_INITIAL_PASSWORD;
+ if(!initial||initial.length<12||password!==initial)return;
+ await init();
+ const hash=await bcrypt.hash(password,12);
+ const c=await database().connect();
+ try{
+  await c.query("BEGIN");
+  await c.query("SELECT pg_advisory_xact_lock(82110512)");
+  await c.query("CREATE TABLE IF NOT EXISTS km_admin_roles(user_id UUID PRIMARY KEY REFERENCES km_users(id),role TEXT NOT NULL DEFAULT 'SUPER_ADMIN',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  const existing=await c.query("SELECT id FROM km_users WHERE lower(username)='admin' LIMIT 1");
+  if(!existing.rowCount){
+   const created=await c.query("INSERT INTO km_users(email,username,password_hash) VALUES($1,'admin',$2) RETURNING id",["admin@local.kmarkets.invalid",hash]);
+   await c.query("INSERT INTO km_admin_roles(user_id) VALUES($1)",[created.rows[0].id]);
+  }
+  await c.query("COMMIT");
+ }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
+}
+export async function isAdmin(id:string|undefined){if(!id)return false;const allow=(process.env.KM_ADMIN_USER_IDS||"").split(",").map(x=>x.trim());if(allow.includes(id))return true;try{const r=await database().query("SELECT 1 FROM km_admin_roles WHERE user_id=$1 LIMIT 1",[id]);return !!r.rowCount}catch{return false}}
