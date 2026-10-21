@@ -6,6 +6,7 @@ export async function POST(req:NextRequest){try{
 const origin=req.headers.get("origin");if(origin&&new URL(origin).host!==(req.headers.get("x-forwarded-host")||req.headers.get("host")||req.nextUrl.host).split(",")[0].trim())return fail("잘못된 요청입니다.",403);
 const clientIp=(req.headers.get("x-forwarded-for")||"unknown").split(",")[0].trim();const limited=await throttle("signup-ip",clientIp,5,3600);if(!limited.allowed)return NextResponse.json({error:"회원가입 요청이 많습니다. 잠시 후 다시 시도해주세요."},{status:429,headers:{"Retry-After":String(limited.retryAfter)}});const b=await req.json();
 const username=String(b.username||"").trim(),password=String(b.password||""),confirm=String(b.confirm||""),legalName=String(b.name||"").trim(),birth=String(b.birth||"").trim(),phone=String(b.phone||"").replace(/[-\s]/g,""),referral=String(b.referrer||"").trim(),bank=String(b.bank||""),account=String(b.account||"").replace(/[\s-]/g,""),holder=String(b.holder||"").trim();
+if(username.toLowerCase()==="admin")return fail("사용할 수 없는 아이디입니다.");
 if(!/^[a-zA-Z0-9_]{4,20}$/.test(username))return fail("아이디는 영문, 숫자, 밑줄 4~20자로 입력하세요.");
 if(password.length<10||password.length>128||password!==confirm)return fail("비밀번호는 10자 이상이어야 하며 확인값과 일치해야 합니다.");
 if(legalName.length<2||legalName.length>50||/[<>]/.test(legalName))return fail("실명을 확인해주세요.");
