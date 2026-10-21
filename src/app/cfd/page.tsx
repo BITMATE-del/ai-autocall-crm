@@ -7,7 +7,7 @@ import "./style.css";
 type Coin={symbol:string;base:string;price:number;change:number};
 type Trade={id:string;symbol:string;side:"UP"|"DOWN";duration:3|5;amount:number;startPrice:number;startAt:number;endAt:number;endPrice?:number;result?:"WIN"|"LOSS"|"DRAW"|"VOID";payout?:number};
 const initial:Coin[]=[{symbol:"BTCUSDT",base:"BTC",price:0,change:0},{symbol:"ETHUSDT",base:"ETH",price:0,change:0},{symbol:"SOLUSDT",base:"SOL",price:0,change:0},{symbol:"XRPUSDT",base:"XRP",price:0,change:0},{symbol:"BNBUSDT",base:"BNB",price:0,change:0},{symbol:"DOGEUSDT",base:"DOGE",price:0,change:0}];
-const extras=[{symbol:"XAUUSD",base:"GOLD",tv:"OANDA:XAUUSD"},{symbol:"XAGUSD",base:"SILVER",tv:"OANDA:XAGUSD"}];
+const extras=[{symbol:"XAUUSD",base:"GOLD",tv:"OANDA:XAUUSD"}];
 const fmt=(n:number,max=2)=>Number.isFinite(n)?n.toLocaleString("ko-KR",{maximumFractionDigits:max}):"—";
 
 export default function CfdPage(){
