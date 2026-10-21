@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
 export const dynamic="force-dynamic";
-const assets=[{id:"XAUUSD",ticker:"GC=F"},{id:"XAGUSD",ticker:"SI=F"}];
+const assets=[{id:"XAUUSD",ticker:"GC=F"}];
 async function change(ticker:string):Promise<number|null>{
  try{
  const url="https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(ticker)+"?interval=1d&range=5d";
