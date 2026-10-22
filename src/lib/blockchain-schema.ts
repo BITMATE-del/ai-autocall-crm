@@ -24,6 +24,28 @@ export async function ensureBlockchainSchema(){
     await c.query("ALTER TABLE km_crypto_requests ADD COLUMN IF NOT EXISTS funding_version INTEGER NOT NULL DEFAULT 1");
     await c.query("CREATE UNIQUE INDEX IF NOT EXISTS km_crypto_tx_unique ON km_crypto_requests(network,lower(tx_hash)) WHERE tx_hash IS NOT NULL AND status='APPROVED'");
     await c.query("CREATE INDEX IF NOT EXISTS km_crypto_member_idx ON km_crypto_requests(user_id,created_at DESC)");
+    await c.query(`CREATE TABLE IF NOT EXISTS km_org_deposit_addresses(
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id UUID NOT NULL REFERENCES km_organizations(id),
+      network TEXT NOT NULL CHECK(network IN ('TRC20','ERC20')),
+      address TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','DISABLED')),
+      created_by UUID NOT NULL REFERENCES km_users(id),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(network,address)
+    )`);
+    await c.query(`CREATE TABLE IF NOT EXISTS km_member_deposit_addresses(
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      member_id UUID NOT NULL REFERENCES km_users(id),
+      organization_id UUID NOT NULL REFERENCES km_organizations(id),
+      network TEXT NOT NULL CHECK(network IN ('TRC20','ERC20')),
+      address_id UUID NOT NULL UNIQUE REFERENCES km_org_deposit_addresses(id),
+      issued_by UUID NOT NULL REFERENCES km_users(id),
+      issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(member_id,network)
+    )`);
+    await c.query("CREATE INDEX IF NOT EXISTS km_org_deposit_pool ON km_org_deposit_addresses(organization_id,network,status)");
+
     await c.query(`CREATE TABLE IF NOT EXISTS km_blockchain_settings(
      id SMALLINT PRIMARY KEY DEFAULT 1 CHECK(id=1),
      krw_per_usdt BIGINT NOT NULL CHECK(krw_per_usdt>0),
