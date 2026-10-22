@@ -12,9 +12,9 @@ export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQu
   const url=new URL("https://api.twelvedata.com/quote");
   url.searchParams.set("symbol",symbol);url.searchParams.set("mic_code",mic);url.searchParams.set("apikey",key);
   const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(6500)});
-  if(!res.ok){reason="QUOTE_HTTP_ERROR";continue}
+  if(!res.ok){reason=res.status===401?"TWELVE_API_KEY_INVALID":res.status===403?"TWELVE_PLAN_ACCESS_DENIED":res.status===429?"TWELVE_RATE_LIMITED":res.status===404?"TWELVE_SYMBOL_NOT_FOUND":"TWELVE_HTTP_"+res.status;continue}
   const data=await res.json();
-  if(data.status==="error"){reason="QUOTE_PROVIDER_ERROR";continue}
+  if(data.status==="error"){const code=Number(data.code);reason=code===401?"TWELVE_API_KEY_INVALID":code===403?"TWELVE_PLAN_ACCESS_DENIED":code===429?"TWELVE_RATE_LIMITED":code===404?"TWELVE_SYMBOL_NOT_FOUND":"TWELVE_PROVIDER_ERROR_"+(Number.isInteger(code)?code:"UNKNOWN");continue}
   const returned=String(data.symbol||"").replace(/\D/g,"");
   if(returned!==symbol||String(data.mic_code||"").toUpperCase()!==mic||String(data.currency||"").toUpperCase()!=="KRW"){reason="QUOTE_IDENTITY_MISMATCH";continue}
   const price=Number(data.close),previousClose=Number(data.previous_close),timestamp=Number(data.last_quote_at);
