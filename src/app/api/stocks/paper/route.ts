@@ -57,7 +57,16 @@ export async function POST(req:Request){
  let body:any;try{body=await req.json()}catch{return NextResponse.json({error:"INVALID_BODY"},{status:400})}
  const symbol=String(body.symbol||""),side=String(body.side||""),q=String(body.qty||""),clientId=String(body.clientOrderId||"");
  if(!DEMO_PRICES[symbol]||!["BUY","SELL"].includes(side)||!/^[1-9]\d{0,5}$/.test(q)||!/^[0-9a-f-]{36}$/i.test(clientId))return NextResponse.json({error:"INVALID_DEMO_ORDER"},{status:400});
- const qty=Number(q),price=DEMO_PRICES[symbol].price,amount=qty*price;
+ let price:number;
+ try{
+  const response=await fetch("https://polling.finance.naver.com/api/realtime/domestic/stock/"+symbol,{cache:"no-store",signal:AbortSignal.timeout(6000),headers:{Accept:"application/json"}});
+  if(!response.ok)throw Error("UPSTREAM_FAILED");
+  const data=await response.json();
+  const match=data?.datas?.find((r:{itemCode?:string})=>r.itemCode===symbol);
+  price=Number(String(match?.closePrice??"").replace(/,/g,""));
+  if(!Number.isSafeInteger(price)||price<=0)throw Error("INVALID_PRICE");
+ }catch{return NextResponse.json({error:"REFERENCE_QUOTE_UNAVAILABLE"},{status:503})}
+ const qty=Number(q),amount=qty*price;
  if(!Number.isSafeInteger(amount)||amount>10000000000)return NextResponse.json({error:"AMOUNT_TOO_LARGE"},{status:400});
  try{
   await ensureSchema();const c=await database().connect();
