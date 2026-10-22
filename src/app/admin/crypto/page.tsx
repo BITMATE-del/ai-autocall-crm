@@ -1,5 +1,5 @@
-import Link from "next/link";
 "use client";
+import Link from "next/link";
 import {useEffect,useState} from "react";
 type Item={id:string;username:string;kind:string;network:string;amount_usdt:string;amount_krw:number|null;rate_krw_per_usdt:number|null;address:string;status:string;created_at:string;tx_hash:string|null};
 export default function AdminCrypto(){const [items,setItems]=useState<Item[]>([]),[rate,setRate]=useState(""),[editingRate,setEditingRate]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);async function load(){try{const r=await fetch("/api/admin/crypto",{cache:"no-store"});const j=await r.json();if(!r.ok)throw Error(j.error);setItems(j.requests||[]);setRate(j.krw_per_usdt?String(j.krw_per_usdt):"");}catch(e){setMessage(String(e))}}useEffect(()=>{void load()},[]);
