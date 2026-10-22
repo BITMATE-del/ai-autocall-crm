@@ -1,11 +1,12 @@
 export type KrQuote={symbol:string;price:number;previousClose:number;asOf:string;provider:"TWELVE_DATA";marketStatus:string};
-export async function getKrStockQuote(symbol:string):Promise<KrQuote>{
+export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQuote>{
  if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
- if(process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")throw Error("STOCK_TRADING_NOT_CONFIGURED");
+ if(forTrade&&process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")throw Error("STOCK_TRADING_NOT_CONFIGURED");
  const key=process.env.TWELVE_DATA_API_KEY;
  if(!key)throw Error("TWELVE_DATA_API_KEY_REQUIRED");
  const local=new Date(Date.now()+32400000),day=local.getUTCDay(),mins=local.getUTCHours()*60+local.getUTCMinutes();
- if(day===0||day===6||mins<540||mins>=930)throw Error("MARKET_NOT_TRADABLE");
+ const marketOpen=day!==0&&day!==6&&mins>=540&&mins<930;
+ if(forTrade&&!marketOpen)throw Error("MARKET_NOT_TRADABLE");
  let reason="QUOTE_UNAVAILABLE";
  for(const mic of ["XKRX","XKOS"]){
   const url=new URL("https://api.twelvedata.com/quote");
@@ -20,8 +21,8 @@ export async function getKrStockQuote(symbol:string):Promise<KrQuote>{
   if(!Number.isSafeInteger(price)||price<=0||!Number.isSafeInteger(previousClose)||previousClose<=0){reason="INVALID_QUOTE";continue}
   if(!Number.isFinite(timestamp)||timestamp<=0){reason="QUOTE_TIMESTAMP_MISSING";continue}
   const age=Date.now()-timestamp*1000;
-  if(age< -3000||age>15000){reason="QUOTE_STALE";continue}
-  return {symbol,price,previousClose,asOf:new Date(timestamp*1000).toISOString(),provider:"TWELVE_DATA",marketStatus:"REGULAR_SESSION"};
+  if(age< -3000||(forTrade&&age>15000)){reason="QUOTE_STALE";continue}
+  return {symbol,price,previousClose,asOf:new Date(timestamp*1000).toISOString(),provider:"TWELVE_DATA",marketStatus:marketOpen?"REGULAR_SESSION":"CLOSED"};
  }
  throw Error(reason);
 }
