@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
 import {verifyCFDOutcome,type OriginalCFD} from "@/lib/cfd-correction-verify";
+import {ensureIncidentSchema} from "@/app/api/admin/cfd-corrections/incidents/route";
 export const dynamic="force-dynamic";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const response=(error:string,status:number)=>NextResponse.json({error},{status});
@@ -19,18 +20,27 @@ if(!b.dryRun&&!enable())return response("APPROVAL_DISABLED_UNTIL_VERIFIED_TESTS"
 try{
  // Approval can be called directly: initialize schema independently of the listing page.
  await database().query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10), ADD COLUMN IF NOT EXISTS verified_source TEXT, ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
- const preview=await database().query(`SELECT r.id,r.order_id,r.requested_by,r.requested_result,r.status,o.id AS order_uuid,o.symbol,o.direction,o.amount_krw,o.entry_price,o.exit_price,o.result,o.payout_krw,o.status AS order_status,o.expires_at FROM km_cfd_correction_requests r JOIN km_cfd_orders o ON o.id=r.order_id WHERE r.id=$1`,[requestId]);
+ const preview=await database().query(`SELECT r.id,r.order_id,r.requested_by,r.requested_result,r.status,o.id AS order_uuid,o.symbol,o.direction,o.amount_krw,o.entry_price,o.exit_price,o.result,o.payout_krw,o.status AS order_status,o.duration_minutes,o.expires_at FROM km_cfd_correction_requests r JOIN km_cfd_orders o ON o.id=r.order_id WHERE r.id=$1`,[requestId]);
  const existing=preview.rows[0];if(!existing)return response("REQUEST_NOT_FOUND",404);
  if(existing.status!=="PENDING")return response("REQUEST_NOT_PENDING",409);
  if(!b.dryRun&&existing.requested_by===u.id)return response("DUAL_CONTROL_REQUIRED",403);
- if(existing.requested_result==="VOID")return response("VOID_REQUIRES_DOCUMENTED_INCIDENT_REVIEW",409);
+ 
  const original:OriginalCFD={id:existing.order_uuid,symbol:existing.symbol,direction:existing.direction,amount_krw:existing.amount_krw,entry_price:existing.entry_price,exit_price:existing.exit_price,result:existing.result,payout_krw:existing.payout_krw,status:existing.order_status,expires_at:existing.expires_at};
  let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
- try{verified=await verifyCFDOutcome(original)}catch(e){return response(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
+ let verifiedIncident:{id:string;kind:string}|null=null;
+ if(existing.requested_result==="VOID"){
+  await ensureIncidentSchema();
+  const incident=await database().query("SELECT id,kind FROM km_cfd_verified_incidents WHERE symbol=$1 AND reviewed_at IS NOT NULL AND reviewed_by<>$2 AND $3::timestamptz BETWEEN start_at AND end_at AND $4::timestamptz BETWEEN start_at AND end_at ORDER BY reviewed_at DESC LIMIT 1",[existing.symbol,u.id,new Date(new Date(existing.expires_at).getTime()-Number(existing.duration_minutes||3)*60000),new Date(existing.expires_at)]);
+  verifiedIncident=incident.rows[0]||null;
+  if(!verifiedIncident)return response("VOID_REQUIRES_INDEPENDENTLY_VERIFIED_INCIDENT",409);
+  verified={result:"VOID",payout:Number(existing.amount_krw),exit:Number(existing.exit_price||existing.entry_price),source:"VERIFIED_INCIDENT:"+verifiedIncident.id,verifiedAt:new Date().toISOString(),expiry:new Date(existing.expires_at).toISOString()};
+ }else{
+  try{verified=await verifyCFDOutcome(original)}catch(e){return response(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
+ }
  const requested=existing.requested_result;
  if(!b.dryRun&&requested!=="AUTO"&&requested!==verified.result)return response("REQUESTED_RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
  const oldPayout=Number(existing.payout_krw||0),delta=verified.payout-oldPayout;
- if(b.dryRun)return NextResponse.json({dryRun:true,canApprove:requested!=="VOID"&&(requested==="AUTO"||requested===verified.result)&&!(delta===0&&verified.result===existing.result),requestId,originalResult:existing.result,verifiedResult:verified.result,originalPayoutKrw:oldPayout,verifiedPayoutKrw:verified.payout,deltaKrw:delta,source:verified.source,verifiedPrice:verified.exit,approvalEnabled:enable(),walletUnchanged:true});
+ if(b.dryRun)return NextResponse.json({dryRun:true,canApprove:(requested==="AUTO"||requested===verified.result)&&!(delta===0&&verified.result===existing.result),requestId,originalResult:existing.result,verifiedResult:verified.result,originalPayoutKrw:oldPayout,verifiedPayoutKrw:verified.payout,deltaKrw:delta,source:verified.source,verifiedPrice:verified.exit,approvalEnabled:enable(),walletUnchanged:true});
  if(delta===0&&verified.result===existing.result)return response("NO_CORRECTION_NEEDED",409);
  if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000)return response("INVALID_SETTLEMENT_DELTA",409);
  const c=await database().connect();try{
@@ -40,6 +50,10 @@ try{
  if(r.requested_by===u.id){await c.query("ROLLBACK");return response("DUAL_CONTROL_REQUIRED",403)}
  if(r.requested_result!==existing.requested_result||Number(r.original_payout_krw||0)!==oldPayout||String(r.original_result)!==String(existing.result)){await c.query("ROLLBACK");return response("REQUEST_CHANGED_REVERIFY_REQUIRED",409)}
  const o=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[r.order_id])).rows[0];
+ if(r.requested_result==="VOID"){
+  const incident=await c.query("SELECT id FROM km_cfd_verified_incidents WHERE id=$1 AND reviewed_at IS NOT NULL AND reviewed_by<>$2 AND symbol=$3 AND $4::timestamptz BETWEEN start_at AND end_at AND $5::timestamptz BETWEEN start_at AND end_at FOR SHARE",[verifiedIncident?.id,u.id,o?.symbol,new Date(new Date(o?.expires_at).getTime()-Number(o?.duration_minutes||3)*60000),o?.expires_at]);
+  if(!incident.rowCount){await c.query("ROLLBACK");return response("INCIDENT_CHANGED",409)}
+ }
  if(!o||o.status!=="SETTLED"||String(o.result)!==String(existing.result)||Number(o.payout_krw||0)!==oldPayout||Number(o.entry_price)!==Number(existing.entry_price)||Number(o.exit_price)!==Number(existing.exit_price)){
  await c.query("ROLLBACK");return response("ORDER_CHANGED_REVERIFY_REQUIRED",409)}
  // Lock wallet with a conditional update. Never create negative balances.
