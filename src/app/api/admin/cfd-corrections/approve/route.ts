@@ -2,7 +2,7 @@ import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
 import {verifyCFDOutcome,type OriginalCFD} from "@/lib/cfd-correction-verify";
-import {ensureIncidentSchema} from "@/app/api/admin/cfd-corrections/incidents/route";
+import {ensureIncidentSchema} from "@/lib/cfd-incident";
 export const dynamic="force-dynamic";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const response=(error:string,status:number)=>NextResponse.json({error},{status});
