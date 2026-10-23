@@ -3,7 +3,7 @@ export const dynamic="force-dynamic";
 export async function GET(){
  try{
   const res=await fetch("https://polling.finance.naver.com/api/realtime?query=SERVICE_INDEX:KOSPI,KOSDAQ",{cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(7000)});
-  if(!res.ok)throw Error("INDEX_HTTP");
+  if(!res.ok)throw Error("INDEX_HTTP_"+res.status);
   const json=await res.json();
   const rows=json?.result?.areas?.find((x:{name?:string})=>x.name==="SERVICE_INDEX")?.datas;
   if(!Array.isArray(rows))throw Error("INDEX_EMPTY");
