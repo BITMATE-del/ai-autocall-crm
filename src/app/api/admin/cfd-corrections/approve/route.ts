@@ -28,9 +28,9 @@ try{
  let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
  try{verified=await verifyCFDOutcome(original)}catch(e){return response(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
  const requested=existing.requested_result;
- if(requested!=="AUTO"&&requested!==verified.result)return response("REQUESTED_RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
+ if(!b.dryRun&&requested!=="AUTO"&&requested!==verified.result)return response("REQUESTED_RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
  const oldPayout=Number(existing.payout_krw||0),delta=verified.payout-oldPayout;
- if(b.dryRun)return NextResponse.json({dryRun:true,canApprove:requested!=="VOID"&&requested!=="AUTO"?requested===verified.result:requested!=="VOID",requestId,originalResult:existing.result,verifiedResult:verified.result,originalPayoutKrw:oldPayout,verifiedPayoutKrw:verified.payout,deltaKrw:delta,source:verified.source,verifiedPrice:verified.exit,approvalEnabled:enable(),walletUnchanged:true});
+ if(b.dryRun)return NextResponse.json({dryRun:true,canApprove:requested!=="VOID"&&(requested==="AUTO"||requested===verified.result)&&!(delta===0&&verified.result===existing.result),requestId,originalResult:existing.result,verifiedResult:verified.result,originalPayoutKrw:oldPayout,verifiedPayoutKrw:verified.payout,deltaKrw:delta,source:verified.source,verifiedPrice:verified.exit,approvalEnabled:enable(),walletUnchanged:true});
  if(delta===0&&verified.result===existing.result)return response("NO_CORRECTION_NEEDED",409);
  if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000)return response("INVALID_SETTLEMENT_DELTA",409);
  const c=await database().connect();try{
