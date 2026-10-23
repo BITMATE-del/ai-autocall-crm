@@ -31,7 +31,7 @@ export async function GET(req:Request){
    const volume=day===priorDay?Math.max(0,total-priorVolume):Math.max(0,total);
    priorDay=day;priorVolume=total;
    const last=bars[bars.length-1];
-   if(last&&last.time===timestamp){last.high=Math.max(last.high,price);last.low=Math.min(last.low,price);last.close=price;last.volume+=volume}
+   if(last&&last.time===timestamp/1000){last.high=Math.max(last.high,price);last.low=Math.min(last.low,price);last.close=price;last.volume+=volume}
    else bars.push({time:timestamp/1000,open:price,high:price,low:price,close:price,volume});
   }
   return bars.slice(-5000);
