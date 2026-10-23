@@ -10,10 +10,11 @@ async function setup(){await init();await database().query(`CREATE TABLE IF NOT 
  requested_by UUID NOT NULL REFERENCES km_users(id),requested_result TEXT NOT NULL CHECK(requested_result IN ('AUTO','WIN','LOSS','VOID')),
  reason TEXT NOT NULL,evidence TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','REJECTED','APPROVED')),
  decided_by UUID REFERENCES km_users(id),decision_reason TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),decided_at TIMESTAMPTZ,
- original_result TEXT,original_payout_krw BIGINT,original_exit_price NUMERIC(24,10),
+ original_result TEXT,original_payout_krw BIGINT,original_exit_price NUMERIC(24,10),verified_price NUMERIC(24,10),verified_source TEXT,adjustment_krw BIGINT,
  CONSTRAINT km_cfd_correction_reason_length CHECK(length(reason) BETWEEN 10 AND 2000),
  CONSTRAINT km_cfd_correction_evidence_length CHECK(length(evidence) BETWEEN 10 AND 4000)
 )`);
+await database().query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10), ADD COLUMN IF NOT EXISTS verified_source TEXT, ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
 await database().query("CREATE UNIQUE INDEX IF NOT EXISTS km_cfd_one_pending_correction ON km_cfd_correction_requests(order_id) WHERE status='PENDING'");
 await database().query(`CREATE TABLE IF NOT EXISTS km_cfd_correction_audit(
  id UUID PRIMARY KEY,request_id UUID NOT NULL REFERENCES km_cfd_correction_requests(id),
