@@ -6,7 +6,8 @@ export async function GET(){
   const indices=await Promise.all(codes.map(async code=>{
    const res=await fetch("https://m.stock.naver.com/api/index/"+code+"/basic",{cache:"no-store",headers:{Accept:"application/json","User-Agent":"Mozilla/5.0"},signal:AbortSignal.timeout(7000)});
    if(!res.ok)throw Error("INDEX_HTTP_"+res.status);
-   const j=await res.json();
+   const basic=await res.json();
+   let j=basic;try{const detail=await fetch("https://polling.finance.naver.com/api/realtime/domestic/index/"+code,{cache:"no-store",signal:AbortSignal.timeout(5000)});if(detail.ok){const d=await detail.json();if(d?.datas?.[0]?.itemCode===code)j=d.datas[0]}}catch{}
    const n=(v:unknown)=>Number(String(v??"").replace(/,/g,""));
    const x={code,value:n(j.closePrice),change:n(j.compareToPreviousClosePrice),rate:n(j.fluctuationsRatio),open:n(j.openPrice),high:n(j.highPrice),low:n(j.lowPrice),status:String(j.marketStatus||"UNKNOWN"),at:String(j.localTradedAt||"")};
    if(!Number.isFinite(x.value)||x.value<=0||!Number.isFinite(x.high)||!Number.isFinite(x.low))throw Error("INDEX_INVALID");
