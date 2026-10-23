@@ -10,19 +10,19 @@ async function privileged(){const u=await currentUser();if(!u?.id||!(await isAdm
 export async function GET(){const u=await privileged().catch(()=>null);if(!u)return response("FORBIDDEN",403);return NextResponse.json({approvalEnabled:enable()},{headers:{"Cache-Control":"no-store"}})}
 export async function POST(req:Request){
 const u=await privileged().catch(()=>null);if(!u)return response("FORBIDDEN",403);
-if(!enable())return response("APPROVAL_DISABLED_UNTIL_VERIFIED_TESTS",503);
 const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();
 if(!origin||new URL(origin).host!==host)return response("INVALID_ORIGIN",403);
-let b:{requestId?:string;reason?:string};try{b=await req.json()}catch{return response("INVALID_JSON",400)}
+let b:{requestId?:string;reason?:string;dryRun?:boolean};try{b=await req.json()}catch{return response("INVALID_JSON",400)}
 const requestId=String(b.requestId||""),reason=String(b.reason||"").trim();
-if(!uuid.test(requestId)||reason.length<10||reason.length>2000)return response("INVALID_INPUT",400);
+if(!uuid.test(requestId)||(!b.dryRun&&(reason.length<10||reason.length>2000)))return response("INVALID_INPUT",400);
+if(!b.dryRun&&!enable())return response("APPROVAL_DISABLED_UNTIL_VERIFIED_TESTS",503);
 try{
  // Approval can be called directly: initialize schema independently of the listing page.
  await database().query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10), ADD COLUMN IF NOT EXISTS verified_source TEXT, ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
  const preview=await database().query(`SELECT r.id,r.order_id,r.requested_by,r.requested_result,r.status,o.id AS order_uuid,o.symbol,o.direction,o.amount_krw,o.entry_price,o.exit_price,o.result,o.payout_krw,o.status AS order_status,o.expires_at FROM km_cfd_correction_requests r JOIN km_cfd_orders o ON o.id=r.order_id WHERE r.id=$1`,[requestId]);
  const existing=preview.rows[0];if(!existing)return response("REQUEST_NOT_FOUND",404);
  if(existing.status!=="PENDING")return response("REQUEST_NOT_PENDING",409);
- if(existing.requested_by===u.id)return response("DUAL_CONTROL_REQUIRED",403);
+ if(!b.dryRun&&existing.requested_by===u.id)return response("DUAL_CONTROL_REQUIRED",403);
  if(existing.requested_result==="VOID")return response("VOID_INCIDENT_VERIFICATION_REQUIRED",409);
  const original:OriginalCFD={id:existing.order_uuid,symbol:existing.symbol,direction:existing.direction,amount_krw:existing.amount_krw,entry_price:existing.entry_price,exit_price:existing.exit_price,result:existing.result,payout_krw:existing.payout_krw,status:existing.order_status,expires_at:existing.expires_at};
  let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
@@ -30,6 +30,7 @@ try{
  const requested=existing.requested_result;
  if(requested!=="AUTO"&&requested!==verified.result)return response("REQUESTED_RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
  const oldPayout=Number(existing.payout_krw||0),delta=verified.payout-oldPayout;
+ if(b.dryRun)return NextResponse.json({dryRun:true,canApprove:requested!=="VOID"&&requested!=="AUTO"?requested===verified.result:requested!=="VOID",requestId,originalResult:existing.result,verifiedResult:verified.result,originalPayoutKrw:oldPayout,verifiedPayoutKrw:verified.payout,deltaKrw:delta,source:verified.source,verifiedPrice:verified.exit,approvalEnabled:enable(),walletUnchanged:true});
  if(delta===0&&verified.result===existing.result)return response("NO_CORRECTION_NEEDED",409);
  if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000)return response("INVALID_SETTLEMENT_DELTA",409);
  const c=await database().connect();try{
