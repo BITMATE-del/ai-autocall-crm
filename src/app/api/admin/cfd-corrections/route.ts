@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin,init} from "@/lib/auth";
+import {ensureCFDCorrectionAuditImmutable} from "@/lib/cfd-correction-audit";
 export const dynamic="force-dynamic";
 const denied=()=>NextResponse.json({error:"FORBIDDEN"},{status:403});
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,6 +19,7 @@ await database().query(`CREATE TABLE IF NOT EXISTS km_cfd_correction_audit(
  id UUID PRIMARY KEY,request_id UUID NOT NULL REFERENCES km_cfd_correction_requests(id),
  actor_id UUID NOT NULL REFERENCES km_users(id),event TEXT NOT NULL,payload JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )`);
+await ensureCFDCorrectionAuditImmutable();
 }
 async function auth(){const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return null;return u;}
 export async function GET(req:Request){const u=await auth();if(!u)return denied();try{await setup();const url=new URL(req.url),status=url.searchParams.get("status")||"",q=(url.searchParams.get("q")||"").trim().slice(0,90);
