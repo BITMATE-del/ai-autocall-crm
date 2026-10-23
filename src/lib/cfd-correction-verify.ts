@@ -2,7 +2,7 @@ import {metalSettlement,metalSymbol} from "@/lib/metal-feed";
 const cryptoSymbols=new Set(["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT"]);
 export type OriginalCFD={id:string;symbol:string;direction:string;amount_krw:string;entry_price:string;exit_price:string|null;result:string|null;payout_krw:string|null;status:string;expires_at:string};
 export async function verifyCFDOutcome(order:OriginalCFD){
-if(order.status!=="SETTLED")throw Error("ORDER_NOT_SETTLED");
+if(!["SETTLED","ACTIVE"].includes(order.status))throw Error("ORDER_NOT_ELIGIBLE");
 const expiry=new Date(order.expires_at).getTime();
 if(!Number.isFinite(expiry)||expiry>Date.now()-65000)throw Error("EXPIRY_NOT_VERIFIABLE");
 const entry=Number(order.entry_price),amount=Number(order.amount_krw);
