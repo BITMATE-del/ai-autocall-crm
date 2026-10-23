@@ -5,19 +5,21 @@ export async function GET(req:Request){
  const url=new URL(req.url),symbol=String(url.searchParams.get("symbol")||"");
  if(!/^\d{6}$/.test(symbol))return NextResponse.json({error:"INVALID_SYMBOL"},{status:400});
  const period=String(url.searchParams.get("period")||"day");
- const periodType=period==="week"?"weekCandle":period==="month"?"monthCandle":"dayCandle";
+ 
  try{
- const [quoteRes,chartRes]=await Promise.all([
+ const [quoteRes,historyRes]=await Promise.all([
  fetch("https://polling.finance.naver.com/api/realtime/domestic/stock/"+symbol,{cache:"no-store",signal:AbortSignal.timeout(6500),headers:{Accept:"application/json"}}),
- fetch("https://api.stock.naver.com/chart/domestic/item/"+symbol+"?periodType="+periodType,{cache:"no-store",signal:AbortSignal.timeout(6500),headers:{Accept:"application/json"}})
+ fetch("https://fchart.stock.naver.com/sise.nhn?symbol="+symbol+"&timeframe="+(period==="week"?"week":period==="month"?"month":"day")+"&count=1200&requestType=0",{cache:"no-store",signal:AbortSignal.timeout(8500),headers:{Accept:"application/xml"}})
  ]);
- if(!quoteRes.ok||!chartRes.ok)throw Error("NAVER_UPSTREAM_UNAVAILABLE");
- const q=await quoteRes.json(),c=await chartRes.json();
+ if(!quoteRes.ok||!historyRes.ok)throw Error("NAVER_UPSTREAM_UNAVAILABLE");
+ const q=await quoteRes.json(),xml=await historyRes.text();
  const item=q?.datas?.find((d:{itemCode?:string})=>d.itemCode===symbol);
- const rows=Array.isArray(c)?c:Array.isArray(c?.priceInfos)?c.priceInfos:Array.isArray(c?.priceInfo)?c.priceInfo:Array.isArray(c?.result?.priceInfos)?c.result.priceInfos:[];
- if(!item||rows.length===0)throw Error("NAVER_DATA_UNAVAILABLE");
- const candles=rows.map((r:any)=>({time:String(r.localDate||"").slice(0,4)+"-"+String(r.localDate||"").slice(4,6)+"-"+String(r.localDate||"").slice(6,8),open:number(r.openPrice),high:number(r.highPrice),low:number(r.lowPrice),close:number(r.closePrice),volume:number(r.accumulatedTradingVolume)})).filter((r:any)=>/^\d{4}-\d{2}-\d{2}$/.test(r.time)&&r.close>0&&r.open>0&&r.high>=Math.max(r.open,r.close)&&r.low<=Math.min(r.open,r.close)).sort((a:any,b:any)=>a.time.localeCompare(b.time)).slice(-250);
- if(!candles.length)throw Error("NAVER_CHART_UNAVAILABLE");
+ const matches=Array.from(xml.matchAll(/<item\s+data="(\d{8}\|[0-9|]+)"\s*\/>/g));
+ const candles=matches.map(m=>{const [date,o,h,l,c,v]=m[1].split("|");return {time:date.slice(0,4)+"-"+date.slice(4,6)+"-"+date.slice(6,8),open:Number(o),high:Number(h),low:Number(l),close:Number(c),volume:Number(v)}})
+ .filter(d=>Number.isSafeInteger(d.close)&&d.close>0&&d.open>0&&d.high>=Math.max(d.open,d.close)&&d.low<=Math.min(d.open,d.close)&&Number.isFinite(d.volume))
+ .sort((a,b)=>a.time.localeCompare(b.time))
+ .filter((d,i,a)=>i===0||d.time!==a[i-1].time);
+ if(!item||candles.length===0)throw Error("NAVER_DATA_UNAVAILABLE");
  return NextResponse.json({source:"NAVER_UNOFFICIAL_PREVIEW",tradeable:false,symbol,name:item.stockName||symbol,price:number(item.closePrice),change:number(item.compareToPreviousClosePrice),rate:Number(item.fluctuationsRatio),marketStatus:item.marketStatus||"UNKNOWN",asOf:item.localTradedAt||null,candles},{headers:{"Cache-Control":"no-store"}});
  }catch{return NextResponse.json({error:"NAVER_PREVIEW_UNAVAILABLE",tradeable:false},{status:503})}
 }
