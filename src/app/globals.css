@@ -9,3 +9,8 @@
 @media(min-width:761px) and (max-width:1100px){.header>.nav button{font-size:12px;padding:0 3px}}
 
 .stockSearchVisible{width:100%!important;min-width:0!important;padding:12px 16px!important;border:1px solid #cad4e4!important;background:#fff!important;box-sizing:border-box}.stockSearchVisible input{font-size:14px!important}.stockSearchVisible .searchResults{z-index:110!important}
+
+/* Trading workspace: full chart next to orders, no orderbook column */
+@media(min-width:761px){.gridMain{grid-template-columns:minmax(0,1.85fr) minmax(320px,.77fr)}.rightColumn{grid-column:auto;flex-direction:column}.rightColumn>.panel{flex:initial}}
+@media(min-width:761px) and (max-width:1100px){.gridMain{grid-template-columns:minmax(0,1.4fr) minmax(285px,.8fr)}.rightColumn{grid-column:auto;flex-direction:column}}
+@media(max-width:760px){.gridMain{display:flex;flex-direction:column}.rightColumn{width:100%;flex-direction:column}}
