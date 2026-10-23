@@ -9,7 +9,7 @@ async function catalog(){
  if(!res.ok)throw Error("STOCK_DIRECTORY_UNAVAILABLE");
  const payload=await res.json();
  const rows=Array.isArray(payload?.items)?payload.items:[];
- const items:SymbolInfo[]=rows.map((x:any)=>({code:String(x["종목코드"]||"").padStart(6,"0"),name:String(x["종목명"]||""),market:String(x.mrktCtg||"")})).filter((x:SymbolInfo)=>/^\\d{6}$/.test(x.code)&&x.name.length>0&&x.name.length<100&&(x.market==="KOSPI"||x.market==="KOSDAQ"));
+ const items:SymbolInfo[]=rows.map((x:any)=>({code:String(x["종목코드"]||"").padStart(6,"0"),name:String(x["종목명"]||""),market:String(x.mrktCtg||"")})).filter((x:SymbolInfo)=>/^\d{6}$/.test(x.code)&&x.name.length>0&&x.name.length<100&&(x.market==="KOSPI"||x.market==="KOSDAQ"));
  if(items.length<1000)throw Error("STOCK_DIRECTORY_INCOMPLETE");
  cache={at:Date.now(),items};return items;
 }
