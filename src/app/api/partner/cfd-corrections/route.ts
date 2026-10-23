@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,init} from "@/lib/auth";
 import {actorFor} from "@/lib/org-access";
+import {ensureCFDCorrectionAuditImmutable} from "@/lib/cfd-correction-audit";
 export const dynamic="force-dynamic";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
@@ -17,7 +18,7 @@ async function ensure(){await init();await database().query(`CREATE TABLE IF NOT
 )`);await database().query("CREATE UNIQUE INDEX IF NOT EXISTS km_cfd_one_pending_correction ON km_cfd_correction_requests(order_id) WHERE status='PENDING'");await database().query(`CREATE TABLE IF NOT EXISTS km_cfd_correction_audit(
  id UUID PRIMARY KEY,request_id UUID NOT NULL REFERENCES km_cfd_correction_requests(id),
  actor_id UUID NOT NULL REFERENCES km_users(id),event TEXT NOT NULL,payload JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)`)}
+)`);await ensureCFDCorrectionAuditImmutable()}
 // Referral ownership is looked up from the signed actor. Never accept the partner or code from client input.
 const scope=`EXISTS (SELECT 1 FROM km_member_attributions m JOIN km_referral_codes rc ON rc.id=m.referral_code_id JOIN km_organizations ro ON ro.id=rc.organization_id WHERE m.user_id=o.user_id AND (
  ($2='AGENT' AND rc.agent_id=$1) OR ($2='SUB_HQ' AND (ro.parent_id=$3 OR ro.id=$3))
