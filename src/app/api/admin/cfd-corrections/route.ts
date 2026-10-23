@@ -22,14 +22,18 @@ await database().query(`CREATE TABLE IF NOT EXISTS km_cfd_correction_audit(
 await ensureCFDCorrectionAuditImmutable();
 }
 async function auth(){const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return null;return u;}
-export async function GET(req:Request){const u=await auth();if(!u)return denied();try{await setup();const url=new URL(req.url),status=url.searchParams.get("status")||"",q=(url.searchParams.get("q")||"").trim().slice(0,90);
+export async function GET(req:Request){const u=await auth();if(!u)return denied();try{await setup();const url=new URL(req.url),status=url.searchParams.get("status")||"",q=(url.searchParams.get("q")||"").trim().slice(0,90),from=url.searchParams.get("from")||"",to=url.searchParams.get("to")||"",tradeStatus=url.searchParams.get("tradeStatus")||"";
 if(status&&!["PENDING","REJECTED","APPROVED"].includes(status))return NextResponse.json({error:"INVALID_STATUS"},{status:400});
+if((from&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(from))||(to&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(to))||(tradeStatus&&!["ACTIVE","SETTLED"].includes(tradeStatus)))return NextResponse.json({error:"INVALID_FILTER"},{status:400});
 const r=await database().query(`SELECT o.id,o.user_id,u.username,u.email,o.symbol,o.direction,o.amount_krw,o.entry_price,o.exit_price,o.result,o.payout_krw,o.status,o.created_at,o.expires_at,o.settled_at,
 (SELECT json_build_object('id',c.id,'status',c.status,'requested_result',c.requested_result,'reason',c.reason,'evidence',c.evidence,'created_at',c.created_at,'decision_reason',c.decision_reason) FROM km_cfd_correction_requests c WHERE c.order_id=o.id ORDER BY c.created_at DESC LIMIT 1) AS correction
 FROM km_cfd_orders o JOIN km_users u ON u.id=o.user_id
 WHERE ($1='' OR o.id::text ILIKE '%'||$1||'%' OR u.username ILIKE '%'||$1||'%' OR u.email ILIKE '%'||$1||'%' OR o.symbol ILIKE '%'||$1||'%')
 AND ($2='' OR EXISTS (SELECT 1 FROM km_cfd_correction_requests c WHERE c.order_id=o.id AND c.status=$2))
-ORDER BY o.created_at DESC LIMIT 150`,[q,status]);
+AND ($3='' OR o.status=$3)
+AND ($4='' OR o.created_at>=NULLIF($4,'')::date)
+AND ($5='' OR o.created_at<NULLIF($5,'')::date+INTERVAL '1 day')
+ORDER BY o.created_at DESC LIMIT 150`,[q,status,tradeStatus,from,to]);
 return NextResponse.json({orders:r.rows},{headers:{"Cache-Control":"no-store"}})}catch(e){console.error("CFD_CORRECTION_LIST_FAILED",e);return NextResponse.json({error:"CORRECTIONS_UNAVAILABLE"},{status:503})}}
 export async function POST(req:Request){const u=await auth();if(!u)return denied();const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();if(!origin||new URL(origin).host!==host)return denied();
 let b:{orderId?:string;requestedResult?:string;reason?:string;evidence?:string};try{b=await req.json()}catch{return NextResponse.json({error:"INVALID_JSON"},{status:400})}
