@@ -23,7 +23,7 @@ try{
  const existing=preview.rows[0];if(!existing)return response("REQUEST_NOT_FOUND",404);
  if(existing.status!=="PENDING")return response("REQUEST_NOT_PENDING",409);
  if(!b.dryRun&&existing.requested_by===u.id)return response("DUAL_CONTROL_REQUIRED",403);
- if(existing.requested_result==="VOID")return response("VOID_INCIDENT_VERIFICATION_REQUIRED",409);
+ if(existing.requested_result==="VOID")return response("VOID_REQUIRES_DOCUMENTED_INCIDENT_REVIEW",409);
  const original:OriginalCFD={id:existing.order_uuid,symbol:existing.symbol,direction:existing.direction,amount_krw:existing.amount_krw,entry_price:existing.entry_price,exit_price:existing.exit_price,result:existing.result,payout_krw:existing.payout_krw,status:existing.order_status,expires_at:existing.expires_at};
  let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
  try{verified=await verifyCFDOutcome(original)}catch(e){return response(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
@@ -38,6 +38,7 @@ try{
  const r=(await c.query("SELECT * FROM km_cfd_correction_requests WHERE id=$1 FOR UPDATE",[requestId])).rows[0];
  if(!r||r.status!=="PENDING"){await c.query("ROLLBACK");return response("REQUEST_ALREADY_PROCESSED",409)}
  if(r.requested_by===u.id){await c.query("ROLLBACK");return response("DUAL_CONTROL_REQUIRED",403)}
+ if(r.requested_result!==existing.requested_result||Number(r.original_payout_krw||0)!==oldPayout||String(r.original_result)!==String(existing.result)){await c.query("ROLLBACK");return response("REQUEST_CHANGED_REVERIFY_REQUIRED",409)}
  const o=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[r.order_id])).rows[0];
  if(!o||o.status!=="SETTLED"||String(o.result)!==String(existing.result)||Number(o.payout_krw||0)!==oldPayout||Number(o.entry_price)!==Number(existing.entry_price)||Number(o.exit_price)!==Number(existing.exit_price)){
  await c.query("ROLLBACK");return response("ORDER_CHANGED_REVERIFY_REQUIRED",409)}
