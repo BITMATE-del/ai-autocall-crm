@@ -9,20 +9,23 @@ export async function GET(req:Request){
   const upstream=await fetch("https://fchart.stock.naver.com/sise.nhn?symbol="+symbol+"&timeframe=minute&count=5000&requestType=0",{cache:"no-store",signal:AbortSignal.timeout(8000)});
   if(!upstream.ok)throw Error("UPSTREAM_ERROR");
   const source=await upstream.text();
-  const bars:Bar[]=[];let lastDay="",prevAccum=0;
+  const bars:Bar[]=[];let lastDay="",prevAccum=0,prevPrice=0;
   for(const m of source.matchAll(/<item data="([^"]+)"\s*\/>/g)){
    const fields=m[1].split("|"),date=fields[0],price=Number(fields[4]),acc=Number(fields[5]);
    if(!/^\d{12}$/.test(date)||!Number.isSafeInteger(price)||price<=0||!Number.isFinite(acc))continue;
    const day=date.slice(0,8),clockMinutes=Number(date.slice(8,10))*60+Number(date.slice(10,12));
    const bucket=Math.floor(clockMinutes/size)*size;
    const time=(Date.UTC(Number(day.slice(0,4)),Number(day.slice(4,6))-1,Number(day.slice(6,8)),0,bucket)-32400000)/1000;
-   const volume=day===lastDay?Math.max(0,acc-prevAccum):Math.max(0,acc);
+   const sameDay=day===lastDay;
+   const volume=sameDay?Math.max(0,acc-prevAccum):Math.max(0,acc);
+   if(!sameDay)prevPrice=0;
    lastDay=day;prevAccum=acc;
+   const opening=sameDay&&prevPrice>0?prevPrice:price;prevPrice=price;
    const prev=bars[bars.length-1];
    if(prev&&prev.time===time){prev.high=Math.max(prev.high,price);prev.low=Math.min(prev.low,price);prev.close=price;prev.volume+=volume}
-   else bars.push({time,open:price,high:price,low:price,close:price,volume});
+   else bars.push({time,open:opening,high:Math.max(opening,price),low:Math.min(opening,price),close:price,volume});
   }
   if(!bars.length)throw Error("NO_MINUTE_DATA");
-  return NextResponse.json({symbol,period,source:"NAVER_MINUTE_LAST_PRICE",approximateOHLC:true,candles:bars.slice(-5000)},{headers:{"Cache-Control":"no-store"}});
+  return NextResponse.json({symbol,period,source:"NAVER_MINUTE_LAST_PRICE",approximateOHLC:true,ohlcMethod:"open=previous sampled price, high/low=extremes of sampled prices; not exchange OHLC",candles:bars.slice(-5000)},{headers:{"Cache-Control":"no-store"}});
  }catch{return NextResponse.json({error:"MINUTE_DATA_UNAVAILABLE"},{status:503})}
 }
