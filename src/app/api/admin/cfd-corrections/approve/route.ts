@@ -17,6 +17,8 @@ let b:{requestId?:string;reason?:string};try{b=await req.json()}catch{return res
 const requestId=String(b.requestId||""),reason=String(b.reason||"").trim();
 if(!uuid.test(requestId)||reason.length<10||reason.length>2000)return response("INVALID_INPUT",400);
 try{
+ // Approval can be called directly: initialize schema independently of the listing page.
+ await database().query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10), ADD COLUMN IF NOT EXISTS verified_source TEXT, ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
  const preview=await database().query(`SELECT r.id,r.order_id,r.requested_by,r.requested_result,r.status,o.id AS order_uuid,o.symbol,o.direction,o.amount_krw,o.entry_price,o.exit_price,o.result,o.payout_krw,o.status AS order_status,o.expires_at FROM km_cfd_correction_requests r JOIN km_cfd_orders o ON o.id=r.order_id WHERE r.id=$1`,[requestId]);
  const existing=preview.rows[0];if(!existing)return response("REQUEST_NOT_FOUND",404);
  if(existing.status!=="PENDING")return response("REQUEST_NOT_PENDING",409);
@@ -42,9 +44,6 @@ try{
  if(delta!==0){const w=await c.query("UPDATE km_krw_wallets SET balance=balance+$2,updated_at=NOW() WHERE user_id=$1 AND balance+$2>=0 RETURNING balance",[o.user_id,delta]);if(!w.rowCount){await c.query("ROLLBACK");return response("INSUFFICIENT_BALANCE_FOR_CORRECTION",409)}}
  await c.query("UPDATE km_cfd_orders SET result=$2,payout_krw=$3,exit_price=$4 WHERE id=$1",[o.id,verified.result,verified.payout,verified.exit]);
  if(delta!==0)await c.query("INSERT INTO km_krw_ledger(id,user_id,order_id,kind,delta_krw) VALUES($1,$2,$3,$4,$5)",[randomUUID(),o.user_id,o.id,"CFD_CORRECTION_"+r.id,delta]);
- await c.query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10)");
- await c.query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_source TEXT");
- await c.query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
  await c.query("UPDATE km_cfd_correction_requests SET status='APPROVED',decided_by=$2,decision_reason=$3,decided_at=NOW(),verified_price=$4,verified_source=$5,adjustment_krw=$6 WHERE id=$1",[requestId,u.id,reason,verified.exit,verified.source,delta]);
  await c.query("INSERT INTO km_cfd_correction_audit(id,request_id,actor_id,event,payload) VALUES($1,$2,$3,'VERIFIED_CORRECTION_APPROVED',$4::jsonb)",[randomUUID(),requestId,u.id,JSON.stringify({reason,originalResult:o.result,originalExit:o.exit_price,originalPayout:oldPayout,verifiedResult:verified.result,verifiedExit:verified.exit,verifiedSource:verified.source,verifiedAt:verified.verifiedAt,verifiedExpiry:verified.expiry,newPayout:verified.payout,deltaKrw:delta})]);
  await c.query("COMMIT");return NextResponse.json({ok:true,orderId:o.id,verifiedResult:verified.result,deltaKrw:delta})
