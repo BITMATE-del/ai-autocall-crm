@@ -3,6 +3,7 @@ import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
 import {verifyCFDOutcome,type OriginalCFD} from "@/lib/cfd-correction-verify";
 import {ensureIncidentSchema} from "@/lib/cfd-incident";
+import {runCFDCorrectionSmoke} from "@/lib/cfd-correction-smoke";
 export const dynamic="force-dynamic";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const response=(error:string,status:number)=>NextResponse.json({error},{status});
@@ -17,6 +18,7 @@ let b:{requestId?:string;reason?:string;dryRun?:boolean};try{b=await req.json()}
 const requestId=String(b.requestId||""),reason=String(b.reason||"").trim();
 if(!uuid.test(requestId)||(!b.dryRun&&(reason.length<10||reason.length>2000)))return response("INVALID_INPUT",400);
 if(!b.dryRun&&!enable())return response("APPROVAL_DISABLED_UNTIL_VERIFIED_TESTS",503);
+if(!b.dryRun){const smoke=await runCFDCorrectionSmoke();if(!smoke.ok){console.error("CFD_CORRECTION_SMOKE_FAILED",smoke);return response("CORRECTION_DB_SMOKE_FAILED",503)}}
 try{
  // Approval can be called directly: initialize schema independently of the listing page.
  await database().query("ALTER TABLE km_cfd_correction_requests ADD COLUMN IF NOT EXISTS verified_price NUMERIC(24,10), ADD COLUMN IF NOT EXISTS verified_source TEXT, ADD COLUMN IF NOT EXISTS adjustment_krw BIGINT");
