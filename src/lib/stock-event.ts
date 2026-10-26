@@ -8,9 +8,11 @@ export async function ensureStockEventSchema(){
  granted_qty BIGINT NOT NULL CHECK(granted_qty>0),available_qty BIGINT NOT NULL CHECK(available_qty>=0 AND available_qty<=granted_qty),
  asset_type TEXT NOT NULL DEFAULT 'SIMULATED_STOCK' CHECK(asset_type='SIMULATED_STOCK'),
  notify_member BOOLEAN NOT NULL DEFAULT TRUE,
+ unit_cost_krw BIGINT NOT NULL DEFAULT 0 CHECK(unit_cost_krw>=0),
  granted_by UUID NOT NULL REFERENCES km_users(id),granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  UNIQUE(event_key,user_id,symbol))`);
  await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS notify_member BOOLEAN NOT NULL DEFAULT TRUE");
+ await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS unit_cost_krw BIGINT NOT NULL DEFAULT 0");
  await database().query(`CREATE TABLE IF NOT EXISTS km_stock_event_movements(
  id UUID PRIMARY KEY,grant_id UUID NOT NULL REFERENCES km_stock_event_grants(id),user_id UUID NOT NULL REFERENCES km_users(id),
  symbol TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('GRANT','SELL_CONSUME','REVERSAL')),
