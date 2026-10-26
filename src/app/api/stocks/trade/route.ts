@@ -1,3 +1,4 @@
+import {getRestrictions} from "@/lib/member-restrictions";
 import {ensureStockEventSchema} from "@/lib/stock-event";
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
@@ -13,7 +14,7 @@ if(process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")return NextResponse.js
 let quote;try{quote=await getKrStockQuote(symbol,true)}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"QUOTE_UNAVAILABLE"},{status:503})}
 const qty=Number(qtyStr),gross=qty*quote.price;if(!Number.isSafeInteger(gross)||gross>10000000000)return NextResponse.json({error:"ORDER_TOO_LARGE"},{status:400});
 try{await schema();await ensureStockEventSchema();const c=await database().connect();try{await c.query("BEGIN");await c.query("SELECT id FROM km_users WHERE id=$1 FOR UPDATE",[u.id]);const existing=await c.query("SELECT id FROM km_stock_internal_orders WHERE id=$1 AND user_id=$2",[orderId,u.id]);if(existing.rowCount){await c.query("COMMIT");return NextResponse.json({ok:true,alreadyProcessed:true,id:orderId})}
-const state=await c.query("SELECT frozen FROM km_users WHERE id=$1",[u.id]);if(state.rows[0]?.frozen){await c.query("ROLLBACK");return NextResponse.json({error:"ACCOUNT_FROZEN"},{status:403})}
+const restrictions=await getRestrictions(u.id);if(restrictions.stock_trading_blocked){await c.query("ROLLBACK");return NextResponse.json({error:"ACCOUNT_FROZEN"},{status:403})}
 const fee=0;
 if(side==="BUY"){const d=await c.query("UPDATE km_krw_wallets SET balance=balance-$2 WHERE user_id=$1 AND balance>=$2 RETURNING balance",[u.id,gross+fee]);if(!d.rowCount){await c.query("ROLLBACK");return NextResponse.json({error:"INSUFFICIENT_BALANCE"},{status:409})}await c.query("INSERT INTO km_stock_positions(user_id,symbol,qty,cost_krw) VALUES($1,$2,$3,$4) ON CONFLICT(user_id,symbol) DO UPDATE SET qty=km_stock_positions.qty+EXCLUDED.qty,cost_krw=km_stock_positions.cost_krw+EXCLUDED.cost_krw",[u.id,symbol,qty,gross]);}else{const old=await c.query("SELECT qty,cost_krw FROM km_stock_positions WHERE user_id=$1 AND symbol=$2 FOR UPDATE",[u.id,symbol]);const h=old.rows[0];if(!h||Number(h.qty)<qty){await c.query("ROLLBACK");return NextResponse.json({error:"INSUFFICIENT_SHARES"},{status:409})}const gifts=await c.query("SELECT id,available_qty,unit_cost_krw FROM km_stock_event_grants WHERE user_id=$1 AND symbol=$2 AND available_qty>0 ORDER BY granted_at,id FOR UPDATE",[u.id,symbol]);
  const giftAvailable=gifts.rows.reduce((sum:number,g:{available_qty:string})=>sum+Number(g.available_qty),0);
