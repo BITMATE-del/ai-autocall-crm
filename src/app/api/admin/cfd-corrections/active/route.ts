@@ -23,7 +23,7 @@ export async function POST(req:Request){
    else await c.query(`INSERT INTO km_cfd_active_overrides(order_id,override_value,reason,admin_id) VALUES($1,$2,$3,$4) ON CONFLICT(order_id) DO UPDATE SET override_value=EXCLUDED.override_value,reason=EXCLUDED.reason,admin_id=EXCLUDED.admin_id,updated_at=NOW()`,[id,value,reason,u.id]);
    await c.query("INSERT INTO km_cfd_override_audit(id,order_id,admin_id,previous_value,new_value,reason) VALUES($1,$2,$3,$4,$5,$6)",[randomUUID(),id,u.id,before,value,reason]);
    await c.query("COMMIT");
-   return NextResponse.json({ok:true,status:"ACTIVE",override:value,effect:"SAVED_PENDING_SETTLEMENT_VERIFICATION",message:value==="AUTO"?"자동 판정으로 복원했습니다.":"보정값을 저장했습니다. 거래 종료 시 시장 시세 또는 검증된 장애 증거가 일치하지 않으면 자동 판정됩니다."});
+   return NextResponse.json({ok:true,status:"ACTIVE",override:value,effect:"SAVED_PENDING_SETTLEMENT_VERIFICATION",message:value==="AUTO"?"자동 판정으로 복원했습니다.":value==="VOID"?"VOID는 검증된 장애 사건과 일치하는 경우에만 정산에 반영됩니다.":"관리자 보정값을 예약했습니다. 정산 시 원래 시장 판정과 보정 판정을 별도로 감사 기록합니다."});
   }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
  }catch(e){console.error("CFD_ACTIVE_OVERRIDE_FAILED",e);return NextResponse.json({error:"OVERRIDE_FAILED"},{status:503})}
 }
