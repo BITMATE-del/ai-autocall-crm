@@ -19,6 +19,8 @@ export async function getActiveSettlementDecision(client:{query:(sql:string,para
  const desired=r.rows[0]?.override_value;
  if(!desired)return {...verified,applied:"AUTO",warning:null};
  if(desired==="VOID"){
+  const exists=await client.query("SELECT to_regclass('public.km_cfd_verified_incidents') AS table_name");
+  if(!exists.rows[0]?.table_name)return {...verified,applied:"AUTO",warning:"VOID_EVIDENCE_UNAVAILABLE"};
   const proof=await client.query("SELECT id FROM km_cfd_verified_incidents WHERE symbol=$1 AND reviewed_at IS NOT NULL AND start_at<=$2 AND end_at>=$3 LIMIT 1",[trade.symbol,new Date(new Date(trade.expires_at).getTime()-Number(trade.duration_minutes)*60000),trade.expires_at]);
   if(proof.rows.length)return {...verified,result:"VOID",payout:Number(trade.amount_krw),applied:"VOID",source:"VERIFIED_INCIDENT:"+proof.rows[0].id,warning:null};
   return {...verified,applied:"AUTO",warning:"VOID_EVIDENCE_UNAVAILABLE"};
