@@ -14,8 +14,8 @@ type Body={orderId?:string;result?:string;reason?:string;evidence?:string;dryRun
 export async function POST(req:Request){
  const user=await privileged().catch(()=>null);if(!user)return fail("SUPER_ADMIN_REQUIRED",403);
  if(!originOK(req))return fail("INVALID_ORIGIN",403);
- const body:Body=await req.json().catch(()=>({}));const orderId=String(body.orderId||""),requested=String(body.result||""),reason=String(body.reason||"").trim(),evidence=String(body.evidence||"").trim(),dryRun=body.dryRun===true;
- if(!uid.test(orderId)||!["AUTO","WIN","LOSS","VOID"].includes(requested)||reason.length<10||reason.length>2000||evidence.length<10||evidence.length>4000)return fail("INVALID_INPUT",400);
+ const body:Body=await req.json().catch(()=>({}));const orderId=String(body.orderId||""),requested=String(body.result||""),reason=String(body.reason||"").trim(),evidence=String(body.evidence||"").trim()||"INTERNAL_REVIEW_ONLY",dryRun=body.dryRun===true;
+ if(!uid.test(orderId)||!["AUTO","WIN","LOSS","VOID"].includes(requested)||reason.length<10||reason.length>2000||evidence.length>4000)return fail("INVALID_INPUT",400);
  if(!dryRun&&process.env.KM_CFD_CORRECTION_APPROVAL_ENABLED!=="true")return fail("CORRECTION_DISABLED",503);
  try{
   const q=await database().query("SELECT * FROM km_cfd_orders WHERE id=$1",[orderId]);const o=q.rows[0];if(!o)return fail("ORDER_NOT_FOUND",404);
