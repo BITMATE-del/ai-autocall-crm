@@ -1,3 +1,4 @@
+import MemberHeader from "@/components/MemberHeader";
 "use client";
 import {useEffect,useState} from "react";
 import Link from "next/link";
@@ -18,7 +19,7 @@ export default function HomePage(){
  useEffect(()=>{void load();void fetch("/api/assets",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{if(j?.wallet){setSignedIn(true);setWallet(Number(j.wallet.balance))}}).catch(()=>{})},[]);
  useEffect(()=>{if(!search.trim()){setResults([]);return}const c=new AbortController();const id=setTimeout(()=>{setLoading(true);fetch("/api/stocks/catalog?q="+encodeURIComponent(search.trim()),{signal:c.signal}).then(r=>r.ok?r.json():null).then(j=>{if(!c.signal.aborted)setResults((j?.items||[]).slice(0,12))}).catch(()=>{if(!c.signal.aborted)setResults([])}).finally(()=>{if(!c.signal.aborted)setLoading(false)})},260);return()=>{clearTimeout(id);c.abort()}},[search]);
  return <div className="kmHome">
-  <header className="kmHHeader"><Link href="/home" className="kmHLogo"><b>K</b> K-MARKETS</Link><nav><Link className="active" href="/home">홈</Link><Link href="/">국내주식</Link><Link href="/cfd">CFD</Link><Link href="/assets">내 자산</Link><Link href="/support">고객센터</Link></nav><Link className="kmHMy" href="/assets">마이페이지 <ChevronRight size={14}/></Link></header>
+  <MemberHeader/>
   <main className="kmHMain">
   <section className="kmHWelcome"><div><p className="kmHEyebrow">MARKET OVERVIEW</p><h1>시장을 한눈에, 거래는 간편하게</h1><p>국내주식 시세와 보유 자산을 확인하고 원하는 거래 화면으로 이동하세요.</p></div><div className="kmHWelcomeActions"><Link href="/" className="kmHPrimary">국내주식 거래 <ArrowUpRight size={17}/></Link><Link href="/cfd" className="kmHSecondary">CFD 거래 <ChevronRight size={16}/></Link></div></section>
   <section className="kmHSection kmHIndexSection kmHMarketPro"><div className="kmHMarketTop"><div><div className="kmHMarketEyebrow">MARKET PULSE <span className="kmHPulseDot"/></div><h2>국내 증시 한눈에</h2><p>국내 주요 지수의 흐름과 당일 가격 범위를 확인하세요.</p></div><div className="kmHMarketAsOf">{indexAt?indexAt+" 조회 기준":"데이터 확인 중"}</div></div>
