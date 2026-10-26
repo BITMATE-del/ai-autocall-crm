@@ -64,7 +64,7 @@ export async function POST(req:Request){
  }else{
   if(oldQty!==expected.qty){await c.query("ROLLBACK");return fail("QTY_MISMATCH_REQUIRES_RECONCILIATION",409)}
   // Exact integer average price is representable only where fill-derived cost divides evenly.
-  if(expected.cost%expected.qty!==BigInt(0)||requested!==expected.cost/expected.qty){await c.query("ROLLBACK");return fail("AVG_NOT_SUPPORTED_BY_EXECUTIONS",409)}
+  if(requested!==expected.cost/expected.qty){await c.query("ROLLBACK");return NextResponse.json({error:"AVG_NOT_SUPPORTED_BY_EXECUTIONS",verifiedAverage:(expected.cost/expected.qty).toString(),verifiedCost:expected.cost.toString(),verifiedQty:expected.qty.toString()},{status:409})}
   if(oldCost===expected.cost){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }
  const oldValue=mode==="QTY"?oldQty:oldCost/oldQty,newValue=mode==="QTY"?expected.qty:expected.cost/expected.qty;
