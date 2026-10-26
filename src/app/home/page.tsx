@@ -1,5 +1,5 @@
-import MemberHeader from "@/components/MemberHeader";
 "use client";
+import MemberHeader from "@/components/MemberHeader";
 import {useEffect,useState} from "react";
 import Link from "next/link";
 import {Search,TrendingUp,BarChart3,Wallet,ArrowUpRight,ArrowDownRight,RefreshCw,ChevronRight,ShieldCheck} from "lucide-react";
