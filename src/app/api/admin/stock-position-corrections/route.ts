@@ -20,11 +20,11 @@ export async function GET(req:Request){
 }
 type Position={qty:bigint;cost:bigint};
 function reconcile(rows:{side:string;qty:string;gross_krw:string;price_krw:string;fee_krw:string;status:string}[]):Position{
- let qty=0n,cost=0n;
+ let qty=BigInt(0),cost=BigInt(0);
  for(const r of rows){
   if(r.status!=="INTERNAL_FILLED"||!["BUY","SELL"].includes(r.side))throw Error("UNVERIFIED_FILL");
   const n=BigInt(r.qty),gross=BigInt(r.gross_krw),price=BigInt(r.price_krw),fee=BigInt(r.fee_krw);
-  if(n<=0n||price<=0n||gross!==n*price||fee!==0n)throw Error("FILL_INTEGRITY_MISMATCH");
+  if(n<=BigInt(0)||price<=BigInt(0)||gross!==n*price||fee!==BigInt(0))throw Error("FILL_INTEGRITY_MISMATCH");
   if(r.side==="BUY"){qty+=n;cost+=gross}else{
    if(n>qty)throw Error("SELL_EXCEEDS_POSITION");
    const release=n===qty?cost:cost*n/qty;
@@ -54,7 +54,7 @@ export async function POST(req:Request){
  const fills=await c.query("SELECT id,side,qty,price_krw,gross_krw,fee_krw,status FROM km_stock_internal_orders WHERE user_id=$1 AND symbol=$2 ORDER BY created_at,id FOR SHARE",[userId,symbol]);
  if(!fills.rows.length){await c.query("ROLLBACK");return fail("NO_VERIFIED_ORDER_HISTORY",409)}
  const expected=reconcile(fills.rows);
- if(expected.qty<=0n){await c.query("ROLLBACK");return fail("NO_VERIFIED_HOLDING",409)}
+ if(expected.qty<=BigInt(0)){await c.query("ROLLBACK");return fail("NO_VERIFIED_HOLDING",409)}
  const oldQty=BigInt(pos.qty),oldCost=BigInt(pos.cost_krw);
  // Only repair an inconsistent materialized position to replayed, documented executions.
  if(mode==="QTY"){
@@ -64,7 +64,7 @@ export async function POST(req:Request){
  }else{
   if(oldQty!==expected.qty){await c.query("ROLLBACK");return fail("QTY_MISMATCH_REQUIRES_RECONCILIATION",409)}
   // Exact integer average price is representable only where fill-derived cost divides evenly.
-  if(expected.cost%expected.qty!==0n||requested!==expected.cost/expected.qty){await c.query("ROLLBACK");return fail("AVG_NOT_SUPPORTED_BY_EXECUTIONS",409)}
+  if(expected.cost%expected.qty!==BigInt(0)||requested!==expected.cost/expected.qty){await c.query("ROLLBACK");return fail("AVG_NOT_SUPPORTED_BY_EXECUTIONS",409)}
   if(oldCost===expected.cost){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }
  const oldValue=mode==="QTY"?oldQty:oldCost/oldQty,newValue=mode==="QTY"?expected.qty:expected.cost/expected.qty;
