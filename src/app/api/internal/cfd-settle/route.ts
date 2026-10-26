@@ -7,8 +7,9 @@ export const dynamic="force-dynamic";
 export const maxDuration=60;
 function authorized(header:string|null){const secret=process.env.CRON_SECRET;if(!secret||secret.length<24||!header?.startsWith("Bearer "))return false;const a=Buffer.from(header.slice(7)),b=Buffer.from(secret);return a.length===b.length&&timingSafeEqual(a,b)}
 export async function GET(req:Request){
+if(process.env.KM_SERVICE_MODE==="admin")return NextResponse.json({ok:true,skipped:"ADMIN_PROJECT"},{headers:{"Cache-Control":"no-store"}});
 if(!authorized(req.headers.get("authorization")))return NextResponse.json({error:"FORBIDDEN"},{status:403});
-if(process.env.KM_SERVICE_MODE==="admin"||process.env.KM_CFD_SETTLEMENT_WORKER_ENABLED!=="true")return NextResponse.json({error:"WORKER_DISABLED"},{status:503});
+if(process.env.KM_CFD_SETTLEMENT_WORKER_ENABLED!=="true")return NextResponse.json({error:"WORKER_DISABLED"},{status:503});
 let settled=0,skipped=0,failed=0;
 await ensureCFDActiveOverrides();
 try{
