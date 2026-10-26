@@ -46,6 +46,9 @@ export async function DELETE(req:Request){
  const already=await c.query("SELECT id FROM km_stock_event_movements WHERE grant_id=$1 AND kind='REVERSAL'",[id]);
  if(already.rowCount){await c.query("ROLLBACK");return error("ALREADY_REVERSED",409)}
  if(Number(g.available_qty)!==Number(g.granted_qty)){await c.query("ROLLBACK");return error("EVENT_SHARES_ALREADY_USED_REVIEW_REQUIRED",409)}
+ const auditExists=await c.query("SELECT to_regclass('public.km_stock_position_correction_audit') IS NOT NULL AS present");
+ if(auditExists.rows[0]?.present){const adjusted=await c.query("SELECT id FROM km_stock_position_correction_audit WHERE user_id=$1 AND symbol=$2 AND created_at >= $3 LIMIT 1",[g.user_id,g.symbol,g.granted_at]);if(adjusted.rowCount){await c.query("ROLLBACK");return error("EVENT_POSITION_ADJUSTED_MANUAL_REVIEW_REQUIRED",409)}}
+
  const p=await c.query("UPDATE km_stock_positions SET qty=qty-$3,cost_krw=cost_krw-$4 WHERE user_id=$1 AND symbol=$2 AND qty>=$3 AND cost_krw>=$4 RETURNING qty",[g.user_id,g.symbol,g.granted_qty,Number(g.granted_qty)*Number(g.unit_cost_krw)]);
  if(!p.rowCount){await c.query("ROLLBACK");return error("INSUFFICIENT_SHARES_FOR_REVERSAL",409)}
  await c.query("UPDATE km_stock_event_grants SET available_qty=0 WHERE id=$1",[id]);
