@@ -41,7 +41,7 @@ export async function POST(req:Request){
  const m=/^([0-9a-f-]{36}):(\d{6})$/i.exec(id);
  if(!m||!uid.test(m[1])||!["QTY","AVG"].includes(mode)||!/^[1-9]\d{0,11}$/.test(target))return fail("INVALID_INPUT");
  const userId=m[1],symbol=m[2],requested=BigInt(target);
- if(requested>100000000000n)return fail("VALUE_TOO_LARGE");
+ if(requested>BigInt(100000000000))return fail("VALUE_TOO_LARGE");
  try{
  await ensurePurchaseCorrectionSchema();
  const c=await database().connect();
