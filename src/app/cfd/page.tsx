@@ -1,5 +1,5 @@
-import MemberHeader from "@/components/MemberHeader";
 "use client";
+import MemberHeader from "@/components/MemberHeader";
 import ProfileShortcut from "@/components/ProfileShortcut";
 import Link from "next/link";
 import Script from "next/script";
