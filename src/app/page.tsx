@@ -44,7 +44,7 @@ const placePaperOrder=async()=>{
  setOrderBusy(true);
  try{
   const r=await fetch("/api/stocks/trade",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({symbol:item.code,side:side==="buy"?"BUY":"SELL",qty,clientOrderId:crypto.randomUUID()})});
-  const j=await r.json();if(!r.ok)throw Error(j.error||"ORDER_FAILED");
+  const j=await r.json();if(!r.ok)throw Error(j.message||j.error||"ORDER_FAILED");
   const [asset,positions]=await Promise.all([fetch("/api/assets",{cache:"no-store"}).then(r=>r.json()),fetch("/api/stocks/trade",{cache:"no-store"}).then(r=>r.json())]);
   if(asset?.wallet)setUnifiedBalance(asset.wallet.balance);
   if(positions?.positions)setInternal(positions);
