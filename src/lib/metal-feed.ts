@@ -25,7 +25,7 @@ export async function metalCurrent(symbol:string){
 }
 export async function metalSettlement(symbol:string,expiry:number){
  if(expiry>Date.now()-65000)throw Error("CANDLE_PENDING");
- const bars=await candles(symbol,expiry-6*60000,expiry);
+ const bars=await metalCandles(symbol,expiry-6*60000,expiry);
  const bar=bars.find(x=>x.at+60000<=expiry);
  if(!bar||expiry-(bar.at+60000)>120000)throw Error("SETTLEMENT_CANDLE_UNAVAILABLE");
  return bar.close;
