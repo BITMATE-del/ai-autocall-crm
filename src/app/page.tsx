@@ -1,5 +1,5 @@
-import MemberHeader from "@/components/MemberHeader";
 "use client";
+import MemberHeader from "@/components/MemberHeader";
 import ProfileShortcut from "@/components/ProfileShortcut";
 import {useEffect,useRef,useState,useMemo} from "react";
 import {createChart,CandlestickSeries,HistogramSeries,LineSeries,ColorType,type IChartApi} from "lightweight-charts";
