@@ -15,7 +15,7 @@ export async function ensureCFDActiveOverrides(){
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
 }
 export async function getActiveSettlementDecision(client:{query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>},trade:{id:string;symbol:string;expires_at:string;duration_minutes:number;amount_krw:string},verified:{result:string;payout:number;source:string}){
- const r=await client.query("SELECT override_value FROM km_cfd_active_overrides WHERE order_id=$1",[trade.id]);
+ const r=await client.query("SELECT override_value,reason,admin_id FROM km_cfd_active_overrides WHERE order_id=$1",[trade.id]);
  const desired=r.rows[0]?.override_value;
  if(!desired)return {...verified,applied:"AUTO",warning:null};
  if(desired==="VOID"){
@@ -25,6 +25,10 @@ export async function getActiveSettlementDecision(client:{query:(sql:string,para
   if(proof.rows.length)return {...verified,result:"VOID",payout:Number(trade.amount_krw),applied:"VOID",source:"VERIFIED_INCIDENT:"+proof.rows[0].id,warning:null};
   return {...verified,applied:"AUTO",warning:"VOID_EVIDENCE_UNAVAILABLE"};
  }
- if(desired!==verified.result)return {...verified,applied:"AUTO",warning:"REQUESTED_RESULT_CONFLICTS_WITH_MARKET"};
- return {...verified,applied:desired,warning:null};
+ if(desired!=="WIN"&&desired!=="LOSS")return {...verified,applied:"AUTO",warning:"INVALID_OVERRIDE"};
+ const amount=Number(trade.amount_krw);
+ if(!Number.isSafeInteger(amount)||amount<=0)throw Error("INVALID_OVERRIDE_AMOUNT");
+ const payout=desired==="WIN"?Math.floor(amount*1.95):0;
+ if(!Number.isSafeInteger(payout))throw Error("INVALID_OVERRIDE_PAYOUT");
+ return {...verified,result:desired,payout,applied:desired,autoResult:verified.result,autoPayout:verified.payout,overrideReason:r.rows[0].reason,overrideAdminId:r.rows[0].admin_id,source:"ADMIN_REVIEW_OVERRIDE",warning:desired===verified.result?null:"ADMIN_RESULT_DIFFERS_FROM_MARKET"};
 }
