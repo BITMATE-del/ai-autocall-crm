@@ -4,6 +4,7 @@ import {currentUser,database,isAdmin} from "@/lib/auth";
 import {verifyCFDOutcome,type OriginalCFD} from "@/lib/cfd-correction-verify";
 import {runCFDCorrectionSmoke} from "@/lib/cfd-correction-smoke";
 import {ensureCFDCorrectionAuditImmutable} from "@/lib/cfd-correction-audit";
+import {ensureIncidentSchema} from "@/lib/cfd-incident";
 export const dynamic="force-dynamic";
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(error:string,status:number)=>NextResponse.json({error},{status});
@@ -20,9 +21,18 @@ export async function POST(req:Request){
   const q=await database().query("SELECT * FROM km_cfd_orders WHERE id=$1",[orderId]);const o=q.rows[0];if(!o)return fail("ORDER_NOT_FOUND",404);
   if(o.status!=="SETTLED")return fail("ORDER_NOT_SETTLED",409);
   const original:OriginalCFD={id:o.id,symbol:o.symbol,direction:o.direction,amount_krw:o.amount_krw,entry_price:o.entry_price,exit_price:o.exit_price,result:o.result,payout_krw:o.payout_krw,status:o.status,expires_at:o.expires_at};
-  if(requested==="VOID")return fail("VOID_REQUIRES_INDEPENDENT_SERVER_EVIDENCE",409);
   let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
-  try{verified=await verifyCFDOutcome(original)}catch(e){return fail(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
+  let incidentId:string|null=null;
+  if(requested==="VOID"){
+   await ensureIncidentSchema();
+   const start=new Date(new Date(o.expires_at).getTime()-Number(o.duration_minutes||3)*60000);
+   const proof=await database().query("SELECT id FROM km_cfd_verified_incidents WHERE symbol=$1 AND reviewed_at IS NOT NULL AND start_at<=$2 AND end_at>=$3 ORDER BY reviewed_at DESC LIMIT 1",[o.symbol,start,o.expires_at]);
+   incidentId=proof.rows[0]?.id||null;
+   if(!incidentId)return fail("VOID_REQUIRES_VERIFIED_SERVER_INCIDENT",409);
+   verified={result:"VOID",payout:Number(o.amount_krw),exit:Number(o.exit_price||o.entry_price),source:"VERIFIED_INCIDENT:"+incidentId,verifiedAt:new Date().toISOString(),expiry:new Date(o.expires_at).toISOString()};
+  }else{
+   try{verified=await verifyCFDOutcome(original)}catch(e){return fail(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
+  }
   if(requested!=="AUTO"&&requested!==verified.result)return fail("RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
   const old=Number(o.payout_krw||0),delta=verified.payout-old;
   if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000)return fail("INVALID_DELTA",409);
@@ -35,6 +45,10 @@ export async function POST(req:Request){
    const locked=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[orderId])).rows[0];
    if(!locked||locked.status!=="SETTLED"||String(locked.result)!==String(o.result)||Number(locked.payout_krw||0)!==old||Number(locked.entry_price)!==Number(o.entry_price)||Number(locked.exit_price)!==Number(o.exit_price)){
     await c.query("ROLLBACK");return fail("TRADE_CHANGED_RELOAD",409)}
+   if(requested==="VOID"){
+    const proof=await c.query("SELECT id FROM km_cfd_verified_incidents WHERE id=$1 AND symbol=$2 AND reviewed_at IS NOT NULL AND start_at<=$3 AND end_at>=$4 FOR SHARE",[incidentId,locked.symbol,new Date(new Date(locked.expires_at).getTime()-Number(locked.duration_minutes||3)*60000),locked.expires_at]);
+    if(!proof.rowCount){await c.query("ROLLBACK");return fail("SERVER_INCIDENT_CHANGED",409)}
+   }
    const pending=await c.query("SELECT 1 FROM km_cfd_correction_requests WHERE order_id=$1 AND status='PENDING' LIMIT 1",[orderId]);
    if(pending.rowCount){await c.query("ROLLBACK");return fail("OLD_PENDING_REQUEST_EXISTS",409)}
    const id=randomUUID();
