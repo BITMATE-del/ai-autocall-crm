@@ -50,7 +50,7 @@ export async function POST(req:Request){
  const changeId=randomUUID();
  await c.query("UPDATE km_cfd_orders SET amount_krw=$2 WHERE id=$1 AND status='ACTIVE'",[id,money]);
  await c.query("INSERT INTO km_krw_ledger(id,user_id,order_id,kind,delta_krw) VALUES($1,$2,$3,$4,$5)",[randomUUID(),row.user_id,id,"CFD_STAKE_ADJUST_"+changeId,-delta]);
- await c.query("INSERT INTO km_purchase_correction_audit(id,user_id,trade_id,kind,old_amount,new_amount,actor_id,old_balance,new_balance) SELECT $1,$2,$3,'CFD',$4,$5,$6,$7,balance FROM km_krw_wallets WHERE user_id=$2",[changeId,row.user_id,id,before,money,u.id,(await c.query("SELECT balance FROM km_krw_wallets WHERE user_id=$1",[row.user_id])).rows[0].balance+delta]);
+ await c.query("INSERT INTO km_purchase_correction_audit(id,user_id,trade_id,kind,old_amount,new_amount,actor_id,old_balance,new_balance) SELECT $1,$2,$3,'CFD',$4,$5,$6,$7,balance FROM km_krw_wallets WHERE user_id=$2",[changeId,row.user_id,id,before,money,u.id,Number((await c.query("SELECT balance FROM km_krw_wallets WHERE user_id=$1",[row.user_id])).rows[0].balance)+delta]);
  await c.query("COMMIT");return NextResponse.json({ok:true,before,after:money,delta});
  }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
  }catch(e){console.error("PURCHASE_CORRECTION_FAILED",e);return err("CORRECTION_FAILED",503)}
