@@ -53,12 +53,19 @@ export async function POST(req:Request){
  const pos=(await c.query("SELECT qty,cost_krw FROM km_stock_positions WHERE user_id=$1 AND symbol=$2 AND qty>0 FOR UPDATE",[userId,symbol])).rows[0];
  if(!pos){await c.query("ROLLBACK");return fail("HOLDING_NOT_FOUND",409)}
  const fills=await c.query("SELECT id,side,qty,price_krw,gross_krw,fee_krw,status FROM km_stock_internal_orders WHERE user_id=$1 AND symbol=$2 ORDER BY created_at,id FOR SHARE",[userId,symbol]);
- const expected=fills.rows.length?reconcile(fills.rows):{qty:BigInt(0),cost:BigInt(0)};
- const gifts=await c.query("SELECT available_qty,unit_cost_krw FROM km_stock_event_grants WHERE user_id=$1 AND symbol=$2 AND available_qty>0 FOR SHARE",[userId,symbol]);
- const giftQty=gifts.rows.reduce((v:bigint,x:{available_qty:string})=>v+BigInt(x.available_qty),BigInt(0));
- const eventCost=gifts.rows.reduce((v:bigint,x:{available_qty:string;unit_cost_krw:string})=>v+BigInt(x.available_qty)*BigInt(x.unit_cost_krw),BigInt(0));
- const verifiedQty=expected.qty+giftQty;
- if(verifiedQty<=BigInt(0)){await c.query("ROLLBACK");return fail("NO_VERIFIED_HOLDING",409)}
+ let tradedQty=BigInt(0);
+ for(const fill of fills.rows){
+  if(fill.status!=="INTERNAL_FILLED"||!["BUY","SELL"].includes(fill.side))throw Error("UNVERIFIED_FILL");
+  const n=BigInt(fill.qty),price=BigInt(fill.price_krw),gross=BigInt(fill.gross_krw),fee=BigInt(fill.fee_krw);
+  if(n<=BigInt(0)||price<=BigInt(0)||gross!==n*price||fee!==BigInt(0))throw Error("FILL_INTEGRITY_MISMATCH");
+  tradedQty+=fill.side==="BUY"?n:-n;
+ }
+ const gifts=await c.query("SELECT g.id,g.granted_qty,g.available_qty,g.unit_cost_krw,EXISTS(SELECT 1 FROM km_stock_event_movements m WHERE m.grant_id=g.id AND m.kind='REVERSAL') AS reversed FROM km_stock_event_grants g WHERE g.user_id=$1 AND g.symbol=$2 FOR SHARE",[userId,symbol]);
+ const grantNet=gifts.rows.reduce((v:bigint,x:{granted_qty:string;reversed:boolean})=>v+(x.reversed?BigInt(0):BigInt(x.granted_qty)),BigInt(0));
+ const giftQty=gifts.rows.reduce((v:bigint,x:{available_qty:string;reversed:boolean})=>v+(x.reversed?BigInt(0):BigInt(x.available_qty)),BigInt(0));
+ const eventCost=gifts.rows.reduce((v:bigint,x:{available_qty:string;unit_cost_krw:string;reversed:boolean})=>v+(x.reversed?BigInt(0):BigInt(x.available_qty)*BigInt(x.unit_cost_krw)),BigInt(0));
+ const verifiedQty=tradedQty+grantNet;
+ if(verifiedQty<=BigInt(0)||verifiedQty<giftQty){await c.query("ROLLBACK");return fail("HOLDING_LEDGER_RECONCILIATION_REQUIRED",409)}
  const oldQty=BigInt(pos.qty),oldCost=BigInt(pos.cost_krw);
  // Only repair an inconsistent materialized position to replayed, documented executions.
  if(mode==="QTY"){
