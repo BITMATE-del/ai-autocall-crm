@@ -16,6 +16,15 @@ export async function metalCandles(symbol:string,start:number,end:number):Promis
  })).filter((x:MetalCandle)=>Number.isFinite(x.at)&&Number.isFinite(x.close)&&x.close>0)
   .sort((a:MetalCandle,b:MetalCandle)=>b.at-a.at);
 }
+export async function metalEntryQuote(symbol:string){
+ const now=Date.now();
+ const bars=await metalCandles(symbol,now-30*60000,now);
+ const closed=bars.filter(b=>b.at+60000<=now&&now-(b.at+60000)<12*60000);
+ const bar=closed[0];
+ if(!bar||now-(bar.at+60000)>freshMs)throw Error("STALE_GOLD_ENTRY_BAR");
+ if(closed.length<3||bar.at-closed[closed.length-1].at<2*60000)throw Error("INSUFFICIENT_GOLD_SETTLEMENT_HISTORY");
+ return {price:bar.close,timestamp:bar.at+60000,source:"TWELVE_DATA_1MIN_CLOSED",symbol:metalSymbol(symbol)};
+}
 export async function metalCurrent(symbol:string){
  const now=Date.now();
  const bars=await metalCandles(symbol,now-12*60000,now);
