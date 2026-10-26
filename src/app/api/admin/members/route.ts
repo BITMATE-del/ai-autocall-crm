@@ -17,12 +17,13 @@ const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")
 let b:{id?:string;action?:string;amount?:number;reason?:string;frozen?:boolean;name?:string;bank?:string;holder?:string;referral?:string;restrictions?:Record<string,boolean>};
 try{b=await req.json()}catch{return NextResponse.json({error:"INVALID_JSON"},{status:400})}
 const id=String(b.id||""),action=String(b.action||""),reason=String(b.reason||"").trim();
-if(!/^[0-9a-f-]{36}$/i.test(id)||!["BALANCE","PROFILE","FREEZE","RESTRICTIONS"].includes(action)||reason.length<5||reason.length>300)return NextResponse.json({error:"INVALID_INPUT"},{status:400});
+if(!/^[0-9a-f-]{36}$/i.test(id)||!["BALANCE","PROFILE","RESTRICTIONS"].includes(action)||reason.length<5||reason.length>300)return NextResponse.json({error:"INVALID_INPUT"},{status:400});
 if(id===admin.id)return NextResponse.json({error:"SELF_MODIFICATION_DENIED"},{status:403});
 if(action==="BALANCE"&&(!Number.isSafeInteger(b.amount)||!b.amount||Math.abs(b.amount)>100000000))return NextResponse.json({error:"INVALID_AMOUNT"},{status:400});
 if(action==="FREEZE"&&typeof b.frozen!=="boolean")return NextResponse.json({error:"INVALID_FREEZE"},{status:400});
 const name=String(b.name||"").trim(),bank=String(b.bank||"").trim(),holder=String(b.holder||"").trim(),referral=String(b.referral||"").trim();
 if(action==="PROFILE"&&(name.length<2||name.length>50||bank.length<2||bank.length>50||holder.length<2||holder.length>50||referral.length>40))return NextResponse.json({error:"INVALID_PROFILE"},{status:400});
+if(action==="RESTRICTIONS"){const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[admin.id]).catch(()=>({rows:[]}));if(role.rows[0]?.role!=="SUPER_ADMIN")return NextResponse.json({error:"HEADQUARTERS_ONLY"},{status:403})}
 try{await schema();await ensureRestrictions();const c=await database().connect();try{await c.query("BEGIN");const member=(await c.query("SELECT id,username,frozen FROM km_users WHERE id=$1 FOR UPDATE",[id])).rows[0];if(!member){await c.query("ROLLBACK");return NextResponse.json({error:"MEMBER_NOT_FOUND"},{status:404})}
 const privileged=await c.query("SELECT 1 FROM km_admin_roles WHERE user_id=$1",[id]);if(privileged.rowCount){await c.query("ROLLBACK");return NextResponse.json({error:"ADMIN_TARGET_DENIED"},{status:403})}
 let detail:Record<string,unknown>={reason};
