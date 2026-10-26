@@ -3,7 +3,7 @@ const freshMs=180000;
 export const metalSymbol=(symbol:string)=>mapping[symbol]||null;
 async function data(path:string,params:Record<string,string>){const key=process.env.TWELVE_DATA_API_KEY;if(!key)throw Error("FEED_NOT_CONFIGURED");const u=new URL("https://api.twelvedata.com/"+path);for(const [k,v] of Object.entries(params))u.searchParams.set(k,v);const r=await fetch(u,{headers:{"Authorization":"apikey "+key},cache:"no-store",signal:AbortSignal.timeout(7000)});const d=await r.json().catch(()=>null);if(!r.ok)throw Error("FEED_HTTP_"+r.status+(d?.code?"_CODE_"+d.code:""));if(d?.status==="error"||d?.code)throw Error("FEED_RESPONSE_"+(d.code||"ERROR"));return d}
 type MetalCandle={at:number;close:number};
-async function candles(symbol:string,start:number,end:number):Promise<MetalCandle[]>{
+export async function metalCandles(symbol:string,start:number,end:number):Promise<MetalCandle[]>{
  const tv=metalSymbol(symbol);if(!tv)throw Error("UNSUPPORTED_SYMBOL");
  const fmt=(t:number)=>new Date(t).toISOString().slice(0,19);
  const d=await data("time_series",{symbol:tv,interval:"1min",timezone:"UTC",start_date:fmt(start),end_date:fmt(end)});
@@ -16,7 +16,7 @@ async function candles(symbol:string,start:number,end:number):Promise<MetalCandl
 }
 export async function metalCurrent(symbol:string){
  const now=Date.now();
- const bars=await candles(symbol,now-12*60000,now);
+ const bars=await metalCandles(symbol,now-12*60000,now);
  // Use only completed 1-minute bars and never treat chart quotes as executable prices.
  const bar=bars.find(x=>x.at+60000<=now);
  if(!bar)throw Error("MINUTE_BAR_UNAVAILABLE");
