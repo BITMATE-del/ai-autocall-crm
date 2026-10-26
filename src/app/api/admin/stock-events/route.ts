@@ -11,14 +11,14 @@ export async function GET(req:Request){
  try{await ensureStockEventSchema();const q=(new URL(req.url).searchParams.get("q")||"").slice(0,80);
  const [members,grants]=await Promise.all([
  database().query("SELECT id,username,email FROM km_users WHERE $1='' OR username ILIKE '%'||$1||'%' OR email ILIKE '%'||$1||'%' OR id::text ILIKE '%'||$1||'%' ORDER BY username LIMIT 70",[q]),
- database().query("SELECT g.id,g.event_key,g.event_name,g.symbol,g.granted_qty,g.available_qty,g.asset_type,g.granted_at,g.user_id,u.username FROM km_stock_event_grants g JOIN km_users u ON u.id=g.user_id ORDER BY g.granted_at DESC LIMIT 100")]);
+ database().query("SELECT g.id,g.event_key,g.event_name,g.symbol,g.granted_qty,g.available_qty,g.asset_type,g.notify_member,g.granted_at,g.user_id,u.username FROM km_stock_event_grants g JOIN km_users u ON u.id=g.user_id ORDER BY g.granted_at DESC LIMIT 100")]);
  return NextResponse.json({members:members.rows,grants:grants.rows},{headers:{"Cache-Control":"no-store"}})
  }catch(e){console.error("STOCK_EVENT_LIST_FAILED",e);return error("EVENT_LIST_UNAVAILABLE",503)}
 }
 export async function POST(req:Request){
  const admin=await superAdmin().catch(()=>null);if(!admin)return error("HEADQUARTERS_ONLY",403);
  if(!originOK(req))return error("INVALID_ORIGIN",403);
- const body=await req.json().catch(()=>null),symbol=String(body?.symbol||""),eventKey=String(body?.eventKey||"").trim(),eventName=String(body?.eventName||"").trim(),qtyText=String(body?.qty||""),users=body?.userIds;
+ const body=await req.json().catch(()=>null),symbol=String(body?.symbol||""),eventKey=String(body?.eventKey||"").trim(),eventName=String(body?.eventName||"").trim(),qtyText=String(body?.qty||""),notifyMember=body?.notifyMember!==false,users=body?.userIds;
  if(!/^\d{6}$/.test(symbol)||!/^.{3,100}$/.test(eventKey)||eventName.length<2||eventName.length>120||!/^[1-9]\d{0,5}$/.test(qtyText)||!Array.isArray(users)||users.length<1||users.length>100||users.some((id:unknown)=>typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))||new Set(users).size!==users.length)return error("INVALID_EVENT_REQUEST",400);
  const qty=Number(qtyText);const results:{userId:string;status:string;grantId?:string}[]=[];
  try{await ensureStockEventSchema();
@@ -27,7 +27,7 @@ export async function POST(req:Request){
  const prior=await c.query("SELECT id FROM km_stock_event_grants WHERE event_key=$1 AND user_id=$2 AND symbol=$3",[eventKey,userId,symbol]);
  if(prior.rowCount){await c.query("ROLLBACK");results.push({userId,status:"ALREADY_GRANTED"});continue}
  const grantId=randomUUID();
- await c.query("INSERT INTO km_stock_event_grants(id,event_key,event_name,user_id,symbol,granted_qty,available_qty,granted_by) VALUES($1,$2,$3,$4,$5,$6,$6,$7)",[grantId,eventKey,eventName,userId,symbol,qty,admin.id]);
+ await c.query("INSERT INTO km_stock_event_grants(id,event_key,event_name,user_id,symbol,granted_qty,available_qty,granted_by,notify_member) VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8)",[grantId,eventKey,eventName,userId,symbol,qty,admin.id,notifyMember]);
  await c.query("INSERT INTO km_stock_positions(user_id,symbol,qty,cost_krw) VALUES($1,$2,$3,0) ON CONFLICT(user_id,symbol) DO UPDATE SET qty=km_stock_positions.qty+EXCLUDED.qty",[userId,symbol,qty]);
  await c.query("INSERT INTO km_stock_event_movements(id,grant_id,user_id,symbol,kind,qty_delta,actor_id) VALUES($1,$2,$3,$4,'GRANT',$5,$6)",[randomUUID(),grantId,userId,symbol,qty,admin.id]);
  await c.query("COMMIT");results.push({userId,status:"GRANTED",grantId});
