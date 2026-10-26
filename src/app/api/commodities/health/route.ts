@@ -1,3 +1,16 @@
-import {NextResponse} from "next/server";import {metalCurrent,metalCandles,metalSymbol} from "@/lib/metal-feed";
+import {NextResponse} from "next/server";
+import {metalEntryQuote,metalSymbol} from "@/lib/metal-feed";
 export const dynamic="force-dynamic";
-export async function GET(){const statuses=await Promise.all(["XAUUSD"].map(async symbol=>{try{const q=await metalCurrent(symbol);let settlementValidated=false;let settlementReason="";try{const now=Date.now();const bars=await metalCandles(symbol,now-15*60000,now);const usable=bars.filter(b=>b.at+60000<=now&&now-(b.at+60000)<12*60000);settlementValidated=usable.length>=3&&usable[0].at-usable[usable.length-1].at>=2*60000;if(!settlementValidated)settlementReason="INSUFFICIENT_GOLD_SETTLEMENT_HISTORY" }catch(e){settlementReason=e instanceof Error?e.message:"HISTORY_UNAVAILABLE"}return {symbol,displaySymbol:metalSymbol(symbol),quoteAvailable:true,price:q.price,asOf:q.timestamp,settlementValidated,settlementReason,tradeEnabled:settlementValidated&&process.env.KM_METALS_TRADING_ENABLED==="true"}}catch(e){return {symbol,displaySymbol:metalSymbol(symbol),quoteAvailable:false,reason:e instanceof Error?e.message:"QUOTE_UNAVAILABLE",settlementValidated:false,tradeEnabled:false}}}));return NextResponse.json({statuses,note:"시세 응답과 만기 과거 데이터·사용 권한을 확인하기 전에는 GOLD 주문을 열지 않습니다."},{headers:{"Cache-Control":"no-store"}})}
+export async function GET(){
+ const statuses=await Promise.all(["XAUUSD"].map(async symbol=>{
+  try{
+   const q=await metalEntryQuote(symbol);
+   return {symbol,displaySymbol:metalSymbol(symbol),quoteAvailable:true,price:q.price,asOf:q.timestamp,settlementValidated:true,tradeEnabled:process.env.KM_METALS_TRADING_ENABLED==="true"};
+  }catch(e){
+   const reason=e instanceof Error?e.message:"GOLD_PRICE_UNAVAILABLE";
+   console.error("GOLD_HEALTH_CHECK_FAILED",{symbol,reason});
+   return {symbol,displaySymbol:metalSymbol(symbol),quoteAvailable:false,settlementValidated:false,tradeEnabled:false,reason};
+  }
+ }));
+ return NextResponse.json({statuses},{headers:{"Cache-Control":"no-store"}});
+}
