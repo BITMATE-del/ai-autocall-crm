@@ -31,7 +31,7 @@ export async function POST(req:Request){
  if(!["CFD","STOCK"].includes(kind)||!/^[1-9]\d{0,10}$/.test(target))return err("INVALID_AMOUNT");
  const money=Number(target);if(!Number.isSafeInteger(money))return err("INVALID_AMOUNT");
  if(kind==="STOCK"){
- const parsed=/^([0-9a-f-]{36}):(\\d{6})$/i.exec(id);if(!parsed)return err("INVALID_HOLDING",400);
+ const parsed=/^([0-9a-f-]{36}):(\d{6})$/i.exec(id);if(!parsed)return err("INVALID_HOLDING",400);
  const [,member,symbol]=parsed;try{
  await ensurePurchaseCorrectionSchema();
  const c=await database().connect();try{
