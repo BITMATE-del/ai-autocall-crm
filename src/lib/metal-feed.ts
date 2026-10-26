@@ -7,7 +7,7 @@ export async function metalCandles(symbol:string,start:number,end:number):Promis
  const tv=metalSymbol(symbol);if(!tv)throw Error("UNSUPPORTED_SYMBOL");
  const fmt=(t:number)=>new Date(t).toISOString().slice(0,19);
  const nearNow=end>=Date.now()-90000;
- const params=nearNow?{symbol:tv,interval:"1min",timezone:"UTC",outputsize:"30"}:{symbol:tv,interval:"1min",timezone:"UTC",start_date:fmt(start),end_date:fmt(end)};
+ const params:Record<string,string>=nearNow?{symbol:tv,interval:"1min",timezone:"UTC",outputsize:"30"}:{symbol:tv,interval:"1min",timezone:"UTC",start_date:fmt(start),end_date:fmt(end)};
  const d=await data("time_series",params);
  if(!Array.isArray(d.values))throw Error("MINUTE_SERIES_UNAVAILABLE");
  return d.values.map((v:{datetime?:string;close?:string})=>({
