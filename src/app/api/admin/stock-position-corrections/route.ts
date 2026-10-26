@@ -62,17 +62,20 @@ export async function POST(req:Request){
   if(oldCost!==expected.cost){await c.query("ROLLBACK");return fail("COST_MISMATCH_REQUIRES_RECONCILIATION",409)}
   if(oldQty===requested){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }else{
-  if(oldQty!==expected.qty){await c.query("ROLLBACK");return fail("QTY_MISMATCH_REQUIRES_RECONCILIATION",409)}
-  // Exact integer average price is representable only where fill-derived cost divides evenly.
-  if(requested!==expected.cost/expected.qty){await c.query("ROLLBACK");return NextResponse.json({error:"AVG_NOT_SUPPORTED_BY_EXECUTIONS",verifiedAverage:(expected.cost/expected.qty).toString(),verifiedCost:expected.cost.toString(),verifiedQty:expected.qty.toString()},{status:409})}
-  if(oldCost===expected.cost){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
+  if(oldQty<=BigInt(0)){await c.query("ROLLBACK");return fail("INVALID_HOLDING_QTY",409)}
+  const newCost=requested*oldQty;
+  if(newCost>BigInt("9223372036854775807")){await c.query("ROLLBACK");return fail("COST_OUT_OF_RANGE",400)}
+  if(oldCost===newCost){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }
- const oldValue=mode==="QTY"?oldQty:oldCost/oldQty,newValue=mode==="QTY"?expected.qty:expected.cost/expected.qty;
+ const oldValue=mode==="QTY"?oldQty:oldCost/oldQty;
+ const newQty=mode==="QTY"?expected.qty:oldQty;
+ const newCost=mode==="QTY"?expected.cost:requested*oldQty;
+ const newValue=mode==="QTY"?expected.qty:requested;
  const changeId=randomUUID();
- await c.query("UPDATE km_stock_positions SET qty=$3,cost_krw=$4 WHERE user_id=$1 AND symbol=$2",[userId,symbol,expected.qty.toString(),expected.cost.toString()]);
- await c.query("INSERT INTO km_stock_position_correction_audit(id,user_id,symbol,field,old_value,new_value,old_qty,new_qty,old_cost,new_cost,admin_id,reference_order_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[changeId,userId,symbol,mode,oldValue.toString(),newValue.toString(),oldQty.toString(),expected.qty.toString(),oldCost.toString(),expected.cost.toString(),u.id,fills.rows[fills.rows.length-1].id]);
+ await c.query("UPDATE km_stock_positions SET qty=$3,cost_krw=$4 WHERE user_id=$1 AND symbol=$2",[userId,symbol,newQty.toString(),newCost.toString()]);
+ await c.query("INSERT INTO km_stock_position_correction_audit(id,user_id,symbol,field,old_value,new_value,old_qty,new_qty,old_cost,new_cost,admin_id,reference_order_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[changeId,userId,symbol,mode,oldValue.toString(),newValue.toString(),oldQty.toString(),newQty.toString(),oldCost.toString(),newCost.toString(),u.id,fills.rows[fills.rows.length-1].id]);
  await c.query("COMMIT");
- return NextResponse.json({ok:true,mode,oldValue:oldValue.toString(),newValue:newValue.toString(),qty:expected.qty.toString(),cost:expected.cost.toString(),walletUnchanged:true})
+ return NextResponse.json({ok:true,mode,oldValue:oldValue.toString(),newValue:newValue.toString(),qty:newQty.toString(),cost:newCost.toString(),walletUnchanged:true})
  }catch(e){await c.query("ROLLBACK").catch(()=>{});if(e instanceof Error&&/^(UNVERIFIED_FILL|FILL_INTEGRITY_MISMATCH|SELL_EXCEEDS_POSITION)$/.test(e.message))return fail(e.message,409);throw e}finally{c.release()}
  }catch(e){console.error("STOCK_HOLDING_CORRECTION_FAILED",e);return fail("CORRECTION_UNAVAILABLE",503)}
 }
