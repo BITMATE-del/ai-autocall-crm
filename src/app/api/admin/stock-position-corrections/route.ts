@@ -2,6 +2,7 @@ import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
 import {ensurePurchaseCorrectionSchema} from "@/lib/purchase-correction";
+import {ensureStockEventSchema} from "@/lib/stock-event";
 export const dynamic="force-dynamic";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,7 +44,7 @@ export async function POST(req:Request){
  const userId=m[1],symbol=m[2],requested=BigInt(target);
  if(requested>BigInt(100000000000))return fail("VALUE_TOO_LARGE");
  try{
- await ensurePurchaseCorrectionSchema();
+ await ensurePurchaseCorrectionSchema();await ensureStockEventSchema();
  const c=await database().connect();
  try{
  await c.query("BEGIN");await c.query("SET LOCAL lock_timeout='5000ms'");
@@ -52,14 +53,17 @@ export async function POST(req:Request){
  const pos=(await c.query("SELECT qty,cost_krw FROM km_stock_positions WHERE user_id=$1 AND symbol=$2 AND qty>0 FOR UPDATE",[userId,symbol])).rows[0];
  if(!pos){await c.query("ROLLBACK");return fail("HOLDING_NOT_FOUND",409)}
  const fills=await c.query("SELECT id,side,qty,price_krw,gross_krw,fee_krw,status FROM km_stock_internal_orders WHERE user_id=$1 AND symbol=$2 ORDER BY created_at,id FOR SHARE",[userId,symbol]);
- if(!fills.rows.length){await c.query("ROLLBACK");return fail("NO_VERIFIED_ORDER_HISTORY",409)}
- const expected=reconcile(fills.rows);
- if(expected.qty<=BigInt(0)){await c.query("ROLLBACK");return fail("NO_VERIFIED_HOLDING",409)}
+ const expected=fills.rows.length?reconcile(fills.rows):{qty:BigInt(0),cost:BigInt(0)};
+ const gifts=await c.query("SELECT available_qty,unit_cost_krw FROM km_stock_event_grants WHERE user_id=$1 AND symbol=$2 AND available_qty>0 FOR SHARE",[userId,symbol]);
+ const giftQty=gifts.rows.reduce((v:bigint,x:{available_qty:string})=>v+BigInt(x.available_qty),BigInt(0));
+ const eventCost=gifts.rows.reduce((v:bigint,x:{available_qty:string;unit_cost_krw:string})=>v+BigInt(x.available_qty)*BigInt(x.unit_cost_krw),BigInt(0));
+ const verifiedQty=expected.qty+giftQty;
+ if(verifiedQty<=BigInt(0)){await c.query("ROLLBACK");return fail("NO_VERIFIED_HOLDING",409)}
  const oldQty=BigInt(pos.qty),oldCost=BigInt(pos.cost_krw);
  // Only repair an inconsistent materialized position to replayed, documented executions.
  if(mode==="QTY"){
-  if(requested!==expected.qty){await c.query("ROLLBACK");return fail("QTY_NOT_SUPPORTED_BY_EXECUTIONS",409)}
-  if(oldCost!==expected.cost){await c.query("ROLLBACK");return fail("COST_MISMATCH_REQUIRES_RECONCILIATION",409)}
+  if(requested!==verifiedQty){await c.query("ROLLBACK");return fail("QTY_NOT_SUPPORTED_BY_EXECUTIONS",409)}
+  if(oldCost<eventCost){await c.query("ROLLBACK");return fail("EVENT_COST_MISMATCH_REQUIRES_RECONCILIATION",409)}
   if(oldQty===requested){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }else{
   if(oldQty<=BigInt(0)){await c.query("ROLLBACK");return fail("INVALID_HOLDING_QTY",409)}
@@ -68,12 +72,12 @@ export async function POST(req:Request){
   if(oldCost===newCost){await c.query("ROLLBACK");return fail("NO_CHANGE",409)}
  }
  const oldValue=mode==="QTY"?oldQty:oldCost/oldQty;
- const newQty=mode==="QTY"?expected.qty:oldQty;
- const newCost=mode==="QTY"?expected.cost:requested*oldQty;
- const newValue=mode==="QTY"?expected.qty:requested;
+ const newQty=mode==="QTY"?verifiedQty:oldQty;
+ const newCost=mode==="QTY"?oldCost:requested*oldQty;
+ const newValue=mode==="QTY"?verifiedQty:requested;
  const changeId=randomUUID();
  await c.query("UPDATE km_stock_positions SET qty=$3,cost_krw=$4 WHERE user_id=$1 AND symbol=$2",[userId,symbol,newQty.toString(),newCost.toString()]);
- await c.query("INSERT INTO km_stock_position_correction_audit(id,user_id,symbol,field,old_value,new_value,old_qty,new_qty,old_cost,new_cost,admin_id,reference_order_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[changeId,userId,symbol,mode,oldValue.toString(),newValue.toString(),oldQty.toString(),newQty.toString(),oldCost.toString(),newCost.toString(),u.id,fills.rows[fills.rows.length-1].id]);
+ await c.query("INSERT INTO km_stock_position_correction_audit(id,user_id,symbol,field,old_value,new_value,old_qty,new_qty,old_cost,new_cost,admin_id,reference_order_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[changeId,userId,symbol,mode,oldValue.toString(),newValue.toString(),oldQty.toString(),newQty.toString(),oldCost.toString(),newCost.toString(),u.id,fills.rows.length?fills.rows[fills.rows.length-1].id:null]);
  await c.query("COMMIT");
  return NextResponse.json({ok:true,mode,oldValue:oldValue.toString(),newValue:newValue.toString(),qty:newQty.toString(),cost:newCost.toString(),walletUnchanged:true})
  }catch(e){await c.query("ROLLBACK").catch(()=>{});if(e instanceof Error&&/^(UNVERIFIED_FILL|FILL_INTEGRITY_MISMATCH|SELL_EXCEEDS_POSITION)$/.test(e.message))return fail(e.message,409);throw e}finally{c.release()}
