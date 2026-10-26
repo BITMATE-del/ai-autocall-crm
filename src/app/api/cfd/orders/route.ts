@@ -13,7 +13,7 @@ async function settle(userId:string){await ensureCFDActiveOverrides();const pend
 const base={result:draw?"DRAW":win?"WIN":"LOSS",payout:draw?amount:win?Math.floor(amount*1.95):0,source:"MARKET_CANDLE"};
 const decision=await getActiveSettlementDecision(c,t,base);
 if(decision.applied!=="AUTO"){
- await c.query("INSERT INTO km_cfd_override_audit(id,order_id,admin_id,previous_value,new_value,reason) SELECT $1,$2,v.admin_id,$3,$4,$5 FROM km_cfd_active_overrides v WHERE v.order_id=$2",[randomUUID(),t.id,decision.result,decision.applied,"SETTLEMENT_APPLIED | MARKET="+(base).result+" | REASON="+(decision.overrideReason||"VERIFIED_INCIDENT")]);
+ await c.query("INSERT INTO km_cfd_override_audit(id,order_id,admin_id,previous_value,new_value,reason) SELECT $1,$2,v.admin_id,$3,$4,$5 FROM km_cfd_active_overrides v WHERE v.order_id=$2",[randomUUID(),t.id,base.result,decision.applied,"SETTLEMENT_APPLIED | MARKET="+(base).result+" | REASON="+("overrideReason" in decision ? decision.overrideReason : "VERIFIED_INCIDENT")]);
  }
 
 const payout=decision.payout,result=decision.result;await c.query("UPDATE km_cfd_orders SET status='SETTLED',result=$2,payout_krw=$3,exit_price=$4,settled_at=NOW() WHERE id=$1",[o.id,result,payout,exit]);if(payout){await c.query("UPDATE km_krw_wallets SET balance=balance+$2,updated_at=NOW() WHERE user_id=$1",[userId,payout]);await c.query("INSERT INTO km_krw_ledger(id,user_id,order_id,kind,delta_krw) VALUES($1,$2,$3,'CFD_PAYOUT',$4)",[randomUUID(),userId,o.id,payout])}await c.query("COMMIT")}catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}}catch(e){console.error("CFD_SETTLEMENT_PENDING_RETRY",{orderId:o.id,error:e instanceof Error?e.message:String(e)})}}}
