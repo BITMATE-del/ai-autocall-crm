@@ -1,5 +1,5 @@
-import MemberHeader from "@/components/MemberHeader";
 "use client";
+import MemberHeader from "@/components/MemberHeader";
 import {useEffect,useState} from "react";
 import Link from "next/link";
 import {Headphones,Send,RefreshCw,ChevronLeft,MessageSquareText,CheckCircle2,Clock3} from "lucide-react";
