@@ -2,19 +2,34 @@ const mapping:Record<string,string>={XAUUSD:"XAU/USD"};
 const freshMs=180000;
 export const metalSymbol=(symbol:string)=>mapping[symbol]||null;
 async function data(path:string,params:Record<string,string>){const key=process.env.TWELVE_DATA_API_KEY;if(!key)throw Error("FEED_NOT_CONFIGURED");const u=new URL("https://api.twelvedata.com/"+path);for(const [k,v] of Object.entries(params))u.searchParams.set(k,v);const r=await fetch(u,{headers:{"Authorization":"apikey "+key},cache:"no-store",signal:AbortSignal.timeout(7000)});const d=await r.json().catch(()=>null);if(!r.ok)throw Error("FEED_HTTP_"+r.status+(d?.code?"_CODE_"+d.code:""));if(d?.status==="error"||d?.code)throw Error("FEED_RESPONSE_"+(d.code||"ERROR"));return d}
-export async function metalCurrent(symbol:string){
+type MetalCandle={at:number;close:number};
+async function candles(symbol:string,start:number,end:number):Promise<MetalCandle[]>{
  const tv=metalSymbol(symbol);if(!tv)throw Error("UNSUPPORTED_SYMBOL");
- // A quote endpoint may omit a timestamp or return a previous session close.
- // Do not assign today's timestamp to an un-timestamped price.
- const d=await data("time_series",{symbol:tv,interval:"1min",timezone:"UTC",outputsize:"2"});
- const row=Array.isArray(d.values)?d.values[0]:null;
- const at=row?.datetime?Date.parse(String(row.datetime).replace(" ","T")+"Z"):NaN;
- const price=Number(row?.close);
- if(!Number.isFinite(at)||!(price>0))throw Error("MINUTE_BAR_UNAVAILABLE");
- if(at>Date.now()+60000||Date.now()-at>180000)throw Error("STALE_MINUTE_BAR");
- return {price,timestamp:at,source:"TWELVE_DATA_1MIN",symbol:tv};
+ const fmt=(t:number)=>new Date(t).toISOString().slice(0,19);
+ const d=await data("time_series",{symbol:tv,interval:"1min",timezone:"UTC",start_date:fmt(start),end_date:fmt(end)});
+ if(!Array.isArray(d.values))throw Error("MINUTE_SERIES_UNAVAILABLE");
+ return d.values.map((v:{datetime?:string;close?:string})=>({
+  at:Date.parse(String(v.datetime||"").replace(" ","T")+"Z"),
+  close:Number(v.close)
+ })).filter((x:MetalCandle)=>Number.isFinite(x.at)&&Number.isFinite(x.close)&&x.close>0)
+  .sort((a:MetalCandle,b:MetalCandle)=>b.at-a.at);
 }
-export async function metalSettlement(symbol:string,expiry:number){const tv=metalSymbol(symbol);if(!tv)throw Error("UNSUPPORTED_SYMBOL");if(expiry>Date.now()-65000)throw Error("CANDLE_PENDING");const d=await data("time_series",{symbol:tv,interval:"1min",timezone:"UTC",start_date:new Date(expiry-180000).toISOString().slice(0,19),end_date:new Date(expiry+120000).toISOString().slice(0,19)});const values=Array.isArray(d.values)?d.values:[];const rows=values.map((x:{datetime:string;close:string})=>({at:Date.parse(x.datetime.replace(" ","T")+"Z"),price:Number(x.close)})).filter((x:{at:number;price:number})=>Number.isFinite(x.at)&&x.price>0&&x.at+60000<=expiry);rows.sort((a:{at:number},b:{at:number})=>b.at-a.at);const candidate=rows[0];if(!candidate||expiry-(candidate.at+60000)>120000)throw Error("SETTLEMENT_CANDLE_UNAVAILABLE");return candidate.price}
+export async function metalCurrent(symbol:string){
+ const now=Date.now();
+ const bars=await candles(symbol,now-12*60000,now);
+ // Use only completed 1-minute bars and never treat chart quotes as executable prices.
+ const bar=bars.find(x=>x.at+60000<=now);
+ if(!bar)throw Error("MINUTE_BAR_UNAVAILABLE");
+ if(now-(bar.at+60000)>freshMs)throw Error("STALE_MINUTE_BAR");
+ return {price:bar.close,timestamp:bar.at+60000,source:"TWELVE_DATA_1MIN_CLOSED",symbol:metalSymbol(symbol)};
+}
+export async function metalSettlement(symbol:string,expiry:number){
+ if(expiry>Date.now()-65000)throw Error("CANDLE_PENDING");
+ const bars=await candles(symbol,expiry-6*60000,expiry);
+ const bar=bars.find(x=>x.at+60000<=expiry);
+ if(!bar||expiry-(bar.at+60000)>120000)throw Error("SETTLEMENT_CANDLE_UNAVAILABLE");
+ return bar.close;
+}
 
 export async function metalSymbolSearch(term:string){
  const d=await data("symbol_search",{symbol:term,outputsize:"10"});
