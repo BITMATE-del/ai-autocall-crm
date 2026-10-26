@@ -62,12 +62,15 @@ export async function POST(req:Request){
  const row=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[id])).rows[0];
  if(!row||row.status!=="ACTIVE"||new Date(row.expires_at).getTime()<=Date.now()){await c.query("ROLLBACK");return err("ORDER_NOT_ACTIVE",409)}
  const record=(await c.query("SELECT requested_amount_krw FROM km_cfd_order_input_records WHERE order_id=$1 FOR UPDATE",[id])).rows[0];
- if(!record){await c.query("ROLLBACK");return err("ORIGINAL_INPUT_NOT_RECORDED",409)}
- if(Number(record.requested_amount_krw)!==money){await c.query("ROLLBACK");return err("AMOUNT_MUST_MATCH_ORIGINAL_REQUEST",409)}
+ const recordedOriginal=record?.requested_amount_krw==null?null:Number(record.requested_amount_krw);
  const before=Number(row.amount_krw);
  const stake=(await c.query("SELECT COUNT(*)::int AS n,COALESCE(SUM(delta_krw),0)::bigint AS total FROM km_krw_ledger WHERE order_id=$1 AND kind='CFD_STAKE'",[id])).rows[0];
  if(stake.n!==1||Number(stake.total)!==-before){await c.query("ROLLBACK");return err("STAKE_LEDGER_MISMATCH",409)}
  if(before===money){await c.query("ROLLBACK");return err("NO_CHANGE",409)}
+ const already=await c.query("SELECT id FROM km_purchase_correction_audit WHERE kind='CFD' AND trade_id=$1 LIMIT 1",[id]);
+ if(already.rowCount){await c.query("ROLLBACK");return err("CORRECTION_ALREADY_APPLIED",409)}
+ if(money<1000||money>100000000){await c.query("ROLLBACK");return err("AMOUNT_OUT_OF_RANGE",400)}
+
  const delta=money-before;
  if(delta>0){const debit=await c.query("UPDATE km_krw_wallets SET balance=balance-$2,updated_at=NOW() WHERE user_id=$1 AND balance>=$2 RETURNING balance",[row.user_id,delta]);if(!debit.rowCount){await c.query("ROLLBACK");return err("INSUFFICIENT_WALLET_BALANCE",409)}}
  else await c.query("UPDATE km_krw_wallets SET balance=balance+$2,updated_at=NOW() WHERE user_id=$1",[row.user_id,-delta]);
@@ -75,7 +78,7 @@ export async function POST(req:Request){
  await c.query("UPDATE km_cfd_orders SET amount_krw=$2 WHERE id=$1 AND status='ACTIVE'",[id,money]);
  await c.query("INSERT INTO km_krw_ledger(id,user_id,order_id,kind,delta_krw) VALUES($1,$2,$3,$4,$5)",[randomUUID(),row.user_id,id,"CFD_STAKE_ADJUST_"+changeId,-delta]);
  await c.query("INSERT INTO km_purchase_correction_audit(id,user_id,trade_id,kind,old_amount,new_amount,actor_id,old_balance,new_balance) SELECT $1,$2,$3,'CFD',$4,$5,$6,$7,balance FROM km_krw_wallets WHERE user_id=$2",[changeId,row.user_id,id,before,money,u.id,Number((await c.query("SELECT balance FROM km_krw_wallets WHERE user_id=$1",[row.user_id])).rows[0].balance)+delta]);
- await c.query("COMMIT");return NextResponse.json({ok:true,before,after:money,delta});
+ await c.query("COMMIT");return NextResponse.json({ok:true,before,after:money,delta,originalInputRecorded:recordedOriginal!==null,correctionBasis:"HEADQUARTERS_VERIFIED_MANUAL_AMOUNT"});
  }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
  }catch(e){console.error("PURCHASE_CORRECTION_FAILED",e);return err("CORRECTION_FAILED",503)}
 }
