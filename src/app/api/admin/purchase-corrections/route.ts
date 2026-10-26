@@ -30,7 +30,31 @@ export async function POST(req:Request){
  const b=await req.json().catch(()=>null),kind=b?.kind,id=String(b?.id||""),target=String(b?.amount||"");
  if(!["CFD","STOCK"].includes(kind)||!/^[1-9]\d{0,10}$/.test(target))return err("INVALID_AMOUNT");
  const money=Number(target);if(!Number.isSafeInteger(money))return err("INVALID_AMOUNT");
- if(kind==="STOCK")return err("STOCK_ORIGINAL_INPUT_NOT_RECORDED_NO_SAFE_CORRECTION",409);
+ if(kind==="STOCK"){
+ const parsed=/^([0-9a-f-]{36}):(\\d{6})$/i.exec(id);if(!parsed)return err("INVALID_HOLDING",400);
+ const [,member,symbol]=parsed;try{
+ await ensurePurchaseCorrectionSchema();
+ const c=await database().connect();try{
+ await c.query("BEGIN");
+ const holding=(await c.query("SELECT qty,cost_krw FROM km_stock_positions WHERE user_id=$1 AND symbol=$2 AND qty>0 FOR UPDATE",[member,symbol])).rows[0];
+ if(!holding){await c.query("ROLLBACK");return err("HOLDING_NOT_FOUND",404)}
+ const orders=await c.query("SELECT id,side,qty,gross_krw,price_krw,fee_krw,status FROM km_stock_internal_orders WHERE user_id=$1 AND symbol=$2 ORDER BY created_at FOR SHARE",[member,symbol]);
+ const buys=orders.rows.filter(x=>x.side==="BUY"&&x.status==="INTERNAL_FILLED"),sells=orders.rows.filter(x=>x.side==="SELL");
+ if(orders.rows.length!==1||buys.length!==1||sells.length){await c.query("ROLLBACK");return err("COMPLEX_POSITION_NEEDS_TRADE_LEDGER_RECONCILIATION",409)}
+ const fill=buys[0],actualQty=Number(fill.qty),actualGross=Number(fill.gross_krw),fee=Number(fill.fee_krw);
+ if(Number(holding.qty)!==actualQty||!Number.isSafeInteger(actualGross)||actualGross!==Number(fill.price_krw)*actualQty||fee!==0){await c.query("ROLLBACK");return err("STOCK_FILL_INTEGRITY_CHECK_FAILED",409)}
+ if(actualGross!==money){await c.query("ROLLBACK");return err("AMOUNT_MUST_MATCH_EXECUTED_BUY",409)}
+ const old=Number(holding.cost_krw);if(old===money){await c.query("ROLLBACK");return err("NO_CHANGE",409)}
+ const buysLedger=await c.query("SELECT COALESCE(SUM(-delta_krw),0)::bigint AS total FROM km_krw_ledger WHERE user_id=$1 AND kind='STOCK_INTERNAL_BUY'",[member]);
+ if(Number(buysLedger.rows[0]?.total)<money){await c.query("ROLLBACK");return err("STOCK_WALLET_LEDGER_MISMATCH",409)}
+ const bal=(await c.query("SELECT balance FROM km_krw_wallets WHERE user_id=$1 FOR UPDATE",[member])).rows[0]?.balance;
+ if(bal===undefined){await c.query("ROLLBACK");return err("WALLET_NOT_FOUND",409)}
+ await c.query("UPDATE km_stock_positions SET cost_krw=$3 WHERE user_id=$1 AND symbol=$2 AND qty=$4",[member,symbol,money,actualQty]);
+ await c.query("INSERT INTO km_purchase_correction_audit(id,user_id,trade_id,kind,old_amount,new_amount,actor_id,old_balance,new_balance) VALUES($1,$2,$3,'STOCK',$4,$5,$6,$7,$7)",[randomUUID(),member,fill.id,old,money,u.id,bal]);
+ await c.query("COMMIT");return NextResponse.json({ok:true,before:old,after:money,delta:0,stockQtyUnchanged:true,walletUnchanged:true});
+ }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
+ }catch(e){console.error("STOCK_PURCHASE_CORRECTION_FAILED",e);return err("STOCK_CORRECTION_FAILED",503)}
+ }
  if(!/^[a-f\d-]{36}$/i.test(id))return err("INVALID_ORDER");
  try{
  const c=await database().connect();try{
