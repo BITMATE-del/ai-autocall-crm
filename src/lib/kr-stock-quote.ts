@@ -1,6 +1,12 @@
-export type KrQuote={symbol:string;price:number;previousClose:number;asOf:string;provider:"NAVER_UNOFFICIAL";marketStatus:string};
+export type KrQuote={symbol:string;price:number;previousClose:number;asOf:string;provider:"NAVER_UNOFFICIAL"|"KIS_REST";marketStatus:string};
 export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQuote>{
  if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
+ // Opt-in for read-only display quotes. Keep existing trusted trade pricing unchanged.
+ if(!forTrade&&process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){
+  try{const {getKisStockQuote}=await import("@/lib/kis-stock-quote");return await getKisStockQuote(symbol)}
+  catch(e){console.warn("KIS_DISPLAY_QUOTE_FALLBACK",e instanceof Error?e.message:"KIS_ERROR")}
+ }
+
  if(forTrade&&process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")throw Error("STOCK_TRADING_NOT_CONFIGURED");
  const numeric=(x:unknown)=>Number(String(x??"").replace(/,/g,""));
  let price=NaN,previousClose=NaN,raw="";
