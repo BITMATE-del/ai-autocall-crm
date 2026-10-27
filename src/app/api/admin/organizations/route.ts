@@ -21,7 +21,7 @@ const org=(await c.query("INSERT INTO km_organizations(type,name,parent_id,creat
 await c.query("INSERT INTO km_organization_members(organization_id,user_id,role) VALUES($1,$2,$3)",[org.id,u.id,type]);
 const initialKeys=type==="AGENT"?PERMISSIONS.filter(key=>AGENT_PERMISSIONS.has(key)):PERMISSIONS;
 let permittedKeys=initialKeys;
-if(type==="AGENT"&&p.type==="SUB_HQ"){
+if(type==="AGENT"&&p.type==="SUB_HQ"&&parent){
  const delegated=await grantsFor(parent);
  permittedKeys=initialKeys.filter(key=>delegated.some(g=>g.key===key&&g.canDelegate));
 }
