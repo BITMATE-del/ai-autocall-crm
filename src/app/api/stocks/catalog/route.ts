@@ -1,3 +1,4 @@
+import {getKisStockDirectory} from "@/lib/kis-stock-directory";
 import {NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type SymbolInfo={code:string;name:string;market:string};
@@ -16,6 +17,9 @@ async function catalog(){
 export async function GET(req:Request){
  const u=new URL(req.url),query=(u.searchParams.get("q")||"").trim().toLowerCase().slice(0,60);
  const page=Math.max(1,Math.min(100,Number(u.searchParams.get("page")||"1")||1));
- try{const all=await catalog();const rows=query?all.filter(x=>(x.code+" "+x.name).toLowerCase().includes(query)):all;return NextResponse.json({source:"Public delayed market directory (aikstockdata / financial public data)",quoteAvailable:false,total:rows.length,page,items:rows.slice((page-1)*100,page*100)},{headers:{"Cache-Control":"public, max-age=60"}})}
+ try{let all:SymbolInfo[],source:string;
+ if(process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){try{all=await getKisStockDirectory();source="KIS_OFFICIAL_MASTER"}catch(e){console.warn("KIS_MASTER_FALLBACK",e instanceof Error?e.message:"UNAVAILABLE");all=await catalog();source="PUBLIC_DIRECTORY_FALLBACK"}}else{all=await catalog();source="PUBLIC_DIRECTORY"}
+ const rows=query?all.filter(x=>(x.code+" "+x.name).toLowerCase().includes(query)):all;
+ return NextResponse.json({source,quoteAvailable:false,total:rows.length,page,items:rows.slice((page-1)*100,page*100)},{headers:{"Cache-Control":"public, max-age=60"}})}
  catch{return NextResponse.json({error:"STOCK_CATALOG_UNAVAILABLE",message:"상장 종목 명단을 불러올 수 없습니다. 기존 샘플을 전체 종목으로 표시하지 않습니다."},{status:503})}
 }
