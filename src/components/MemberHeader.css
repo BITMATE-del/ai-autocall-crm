@@ -1,24 +1,24 @@
-.kmMemberHeader{box-sizing:border-box!important;width:100%!important;height:72px!important;min-height:72px!important;padding:0 clamp(18px,3vw,44px)!important;margin:0!important;display:grid!important;grid-template-columns:minmax(180px,1fr) auto minmax(180px,1fr)!important;align-items:center!important;gap:16px!important;background:#fff!important;border:0!important;border-bottom:1px solid #e7ebf3!important;border-radius:0!important;position:relative!important;z-index:30!important;color:#172d50!important;font-family:inherit!important;box-shadow:none!important}
+.kmMemberHeader{box-sizing:border-box!important;width:100%!important;height:72px!important;min-height:72px!important;padding:0 clamp(18px,3vw,44px)!important;margin:0!important;display:grid!important;grid-template-columns:minmax(180px,1fr) auto minmax(180px,1fr)!important;align-items:center!important;gap:16px!important;background:#fff!important;border:0!important;border-bottom:1px solid #e7ebf3!important;border-radius:0!important;position:relative!important;z-index:30!important;color:#292b31!important;font-family:inherit!important;box-shadow:none!important}
 .kmMemberHeader *{box-sizing:border-box}
-.kmMemberHeader .kmMemberBrand{display:inline-flex!important;align-items:center!important;gap:11px!important;color:#102242!important;text-decoration:none!important;white-space:nowrap!important;justify-self:start!important;font-size:17px!important;letter-spacing:-.5px!important;min-width:0!important}
+.kmMemberHeader .kmMemberBrand{display:inline-flex!important;align-items:center!important;gap:11px!important;color:#292b31!important;text-decoration:none!important;white-space:nowrap!important;justify-self:start!important;font-size:17px!important;letter-spacing:-.5px!important;min-width:0!important}
 .kmMemberHeader .kmMemberNav{height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:28px!important;margin:0!important;padding:0!important;white-space:nowrap!important;background:transparent!important}
-.kmMemberHeader .kmMemberNav a{height:100%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 4px!important;margin:0!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important;font-weight:650!important;color:#7d8ca4!important;text-decoration:none!important}
-.kmMemberHeader .kmMemberNav a:hover{color:#3158d9!important}
-.kmMemberHeader .kmMemberNav a.kmMemberSelected{color:#325bdc!important;border-bottom-color:#4364e6!important;font-weight:800!important}
+.kmMemberHeader .kmMemberNav a{height:100%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 4px!important;margin:0!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important;font-weight:650!important;color:#777b83!important;text-decoration:none!important}
+.kmMemberHeader .kmMemberNav a:hover{color:#777b83!important}
+.kmMemberHeader .kmMemberNav a.kmMemberSelected{color:#777b83!important;border-bottom-color:#777b83!important;font-weight:800!important}
 .kmMemberHeader .kmMemberActions{display:flex!important;align-items:center!important;justify-self:end!important;justify-content:flex-end!important;gap:18px!important}
-.kmMemberHeader .kmMemberNotification{display:flex!important;align-items:center!important;color:#8797b2!important;text-decoration:none!important}
-.kmMemberHeader .kmMemberProfile{width:35px!important;height:35px!important;border-radius:50%!important;background:#e3eafe!important;color:#4064d8!important;display:grid!important;place-items:center!important;font-size:12px!important;font-weight:800!important;text-decoration:none!important}
+.kmMemberHeader .kmMemberNotification{display:flex!important;align-items:center!important;color:#777b83!important;text-decoration:none!important}
+.kmMemberHeader .kmMemberProfile{width:35px!important;height:35px!important;border-radius:50%!important;background:#f5f5f6!important;color:#777b83!important;display:grid!important;place-items:center!important;font-size:12px!important;font-weight:800!important;text-decoration:none!important}
 .kmMemberHeader .kmMemberNotifyWrap{position:relative;display:flex;align-items:center}
 .kmMemberHeader .kmMemberNotification{position:relative;border:0;background:transparent;padding:8px;cursor:pointer}
 .kmMemberNotifyDot{position:absolute;right:5px;top:5px;width:7px;height:7px;background:#ed5570;border:2px solid white;border-radius:50%}
-.kmMemberHeader .kmMemberNotifyPanel{position:absolute;right:-48px;top:calc(100% + 15px);width:min(350px,calc(100vw - 24px));max-height:430px;overflow-y:auto;background:#fff;border:1px solid #dce5f4;box-shadow:0 14px 42px rgba(28,54,100,.15);border-radius:12px;z-index:100;padding:8px;color:#193355}
+.kmMemberHeader .kmMemberNotifyPanel{position:absolute;right:-48px;top:calc(100% + 15px);width:min(350px,calc(100vw - 24px));max-height:430px;overflow-y:auto;background:#fff;border:1px solid #f5f5f6;box-shadow:0 14px 42px rgba(28,54,100,.15);border-radius:12px;z-index:100;padding:8px;color:#292b31}
 .kmMemberNotifyTitle{display:flex;justify-content:space-between;align-items:center;padding:10px;font-size:14px;font-weight:800;border-bottom:1px solid #e9eef5}
-.kmMemberNotifyTitle button{border:0;background:transparent;color:#76869e;cursor:pointer;font-size:12px}
+.kmMemberNotifyTitle button{border:0;background:transparent;color:#777b83;cursor:pointer;font-size:12px}
 .kmMemberNotifyItem{padding:12px 10px;border-bottom:1px solid #edf1f6;font-size:12px}
-.kmMemberNotifyItem strong{font-size:12px;color:#204075}
-.kmMemberNotifyItem p{margin:6px 0;color:#455c7e}
-.kmMemberNotifyItem small{color:#95a1b4}
-.kmMemberNotifyEmpty{padding:20px 10px;text-align:center;color:#8d9aab;font-size:12px}
+.kmMemberNotifyItem strong{font-size:12px;color:#292b31}
+.kmMemberNotifyItem p{margin:6px 0;color:#bf2032}
+.kmMemberNotifyItem small{color:#777b83}
+.kmMemberNotifyEmpty{padding:20px 10px;text-align:center;color:#777b83;font-size:12px}
 .kmMemberHeader .kmMemberLogo{display:block!important;width:164px!important;height:60px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}
 @media(max-width:870px){.kmMemberHeader{height:auto!important;min-height:70px!important;grid-template-columns:1fr auto!important;grid-template-rows:52px 42px!important;gap:0 10px!important;padding:0 16px!important}.kmMemberHeader .kmMemberNav{grid-column:1/-1!important;grid-row:2!important;justify-content:flex-start!important;gap:22px!important;overflow-x:auto!important;max-width:calc(100vw - 32px)!important}.kmMemberHeader .kmMemberNav a{font-size:12px!important;flex-shrink:0!important}.kmMemberHeader .kmMemberActions{grid-column:2;grid-row:1}.kmMemberHeader .kmMemberBrand{grid-column:1;grid-row:1}.kmMemberHeader .kmMemberLogo{width:140px!important;height:50px!important}}
 @media(max-width:600px){.kmMemberHeader .kmMemberNotifyPanel{right:-42px}.kmMemberHeader .kmMemberLogo{width:132px!important;height:48px!important}}
