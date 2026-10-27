@@ -97,7 +97,7 @@ export async function enqueueAlert(id:string,member:string,kind:string,details:s
   await schema();
   await database().query(`INSERT INTO km_tg_events(id,member_id,kind,details)
     VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING`,[id,member,kind,details.slice(0,800)]);
-  if(process.env.HFM_TELEGRAM_BOT_TOKEN)await deliverAlerts();
+  // Cron handles delivery independently of member request completion.
  }catch(e){console.error("HFM_ALERT_ENQUEUE_FAILED",e instanceof Error?e.message:String(e))}
 }
 export async function deliverAlerts(){
@@ -114,7 +114,7 @@ export async function deliverAlerts(){
  LEFT JOIN km_organizations parent ON parent.id=o.parent_id
  LEFT JOIN km_tg_deliveries d ON d.event_id=e.id AND d.chat_id=s.chat_id
  WHERE e.created_at>NOW()-INTERVAL '7 days' AND(d.sent_at IS NULL)
- AND COALESCE(d.attempts,0)<6 AND(parent.status IS NULL OR parent.status='ACTIVE')
+ AND COALESCE(d.attempts,0)<6 AND s.created_at<=e.created_at AND(parent.status IS NULL OR parent.status='ACTIVE')
  ORDER BY e.created_at ASC LIMIT 30`)).rows;
  const adminRows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,s.chat_id
  FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
@@ -122,7 +122,7 @@ export async function deliverAlerts(){
  JOIN km_admin_roles a ON a.user_id=s.admin_id
  LEFT JOIN km_tg_deliveries d ON d.event_id=e.id AND d.chat_id=s.chat_id
  WHERE e.created_at>NOW()-INTERVAL '7 days' AND d.sent_at IS NULL
- AND COALESCE(d.attempts,0)<6 ORDER BY e.created_at ASC LIMIT 30`)).rows;
+ AND COALESCE(d.attempts,0)<6 AND s.created_at<=e.created_at ORDER BY e.created_at ASC LIMIT 30`)).rows;
  rows.push(...adminRows.map((x:{id:string;kind:string;details:string;username:string;chat_id:string})=>({...x,code:"전체 관리자"})));
  for(const e of rows){
   const ok=await send(e.chat_id,"[HFM KOREA] "+e.kind+"\\n담당코드: "+e.code+"\\n회원: "+e.username+"\\n"+e.details);
