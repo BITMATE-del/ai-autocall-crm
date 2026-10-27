@@ -7,7 +7,7 @@ export default function Page(){
  const [connections,setConnections]=useState<Connection[]>([]),[listed,setListed]=useState(false);
  async function setup(){setBusy(true);setStatus("");try{
  const r=await fetch("/api/admin/telegram/setup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
- const j=await r.json();if(!r.ok)throw Error(j.error||"웹훅 연결 실패");setStatus("웹훅 연결 완료");
+ const j=await r.json();if(!r.ok)throw Error(j.message||j.error||"웹훅 연결 실패");setStatus("웹훅 연결 완료");
  }catch(e){setStatus(e instanceof Error?e.message:"연결 실패")}finally{setBusy(false)}}
  async function list(){try{const r=await fetch("/api/admin/telegram/manage",{cache:"no-store"});const j=await r.json();if(!r.ok)throw Error(j.error);setConnections(j.connections||[]);setListed(true)}catch(e){setStatus(String(e))}}
  async function action(kind:"test"|"delete",x:Connection){
