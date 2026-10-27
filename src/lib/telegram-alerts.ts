@@ -9,6 +9,15 @@ async function schema(){
     referral_code_id UUID NOT NULL REFERENCES km_referral_codes(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY(chat_id,referral_code_id))`);
+  await database().query(`CREATE TABLE IF NOT EXISTS km_tg_subhq_chats(
+    chat_id TEXT NOT NULL,operator_id UUID NOT NULL REFERENCES km_users(id),
+    organization_id UUID NOT NULL REFERENCES km_organizations(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY(chat_id,organization_id))`);
+  await database().query(`CREATE TABLE IF NOT EXISTS km_tg_subhq_pair_tokens(
+    token_hash TEXT PRIMARY KEY,operator_id UUID NOT NULL REFERENCES km_users(id),
+    organization_id UUID NOT NULL REFERENCES km_organizations(id),
+    expires_at TIMESTAMPTZ NOT NULL,used_at TIMESTAMPTZ)`);
   await database().query(`CREATE TABLE IF NOT EXISTS km_tg_admin_chats(
     chat_id TEXT PRIMARY KEY,admin_id UUID NOT NULL REFERENCES km_users(id),
     created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -38,6 +47,29 @@ export async function makePairToken(agentId:string,codeId:string){
  const token=randomBytes(24).toString("hex");
  await database().query("INSERT INTO km_tg_pair_tokens(token_hash,agent_id,referral_code_id,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '10 minutes')",[await digest(token),agentId,codeId]);
  return token;
+}
+export async function makeSubHqPairToken(operatorId:string,orgId:string){
+ await schema();const token=randomBytes(24).toString("hex");
+ await database().query("INSERT INTO km_tg_subhq_pair_tokens(token_hash,operator_id,organization_id,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '10 minutes')",[await digest(token),operatorId,orgId]);
+ return token;
+}
+export async function consumeSubHqPairToken(token:string,chat:string){
+ if(!/^[a-f0-9]{48}$/.test(token)||!/^[-]?[0-9]{1,20}$/.test(chat))return false;
+ await schema();const c=await database().connect();
+ try{
+  await c.query("BEGIN");
+  const found=(await c.query(`SELECT p.operator_id,p.organization_id FROM km_tg_subhq_pair_tokens p
+   JOIN km_organization_members m ON m.user_id=p.operator_id AND m.organization_id=p.organization_id AND m.status='ACTIVE' AND m.role='SUB_HQ'
+   JOIN km_organizations o ON o.id=p.organization_id AND o.type='SUB_HQ' AND o.status='ACTIVE'
+   JOIN km_organizations parent ON parent.id=o.parent_id AND parent.status='ACTIVE'
+   WHERE p.token_hash=$1 AND p.used_at IS NULL AND p.expires_at>NOW()
+   FOR UPDATE OF p`,[await digest(token)])).rows[0];
+  if(!found){await c.query("ROLLBACK");return false}
+  await c.query("UPDATE km_tg_subhq_pair_tokens SET used_at=NOW() WHERE token_hash=$1",[await digest(token)]);
+  await c.query(`INSERT INTO km_tg_subhq_chats(chat_id,operator_id,organization_id) VALUES($1,$2,$3)
+   ON CONFLICT(chat_id,organization_id) DO UPDATE SET operator_id=EXCLUDED.operator_id`,[chat,found.operator_id,found.organization_id]);
+  await c.query("COMMIT");return true;
+ }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
 }
 export async function makeAdminPairToken(adminId:string){
  await schema();const token=randomBytes(24).toString("hex");
@@ -116,6 +148,19 @@ export async function deliverAlerts(){
  WHERE e.created_at>NOW()-INTERVAL '7 days' AND(d.sent_at IS NULL)
  AND COALESCE(d.attempts,0)<6 AND s.created_at<=e.created_at AND(parent.status IS NULL OR parent.status='ACTIVE')
  ORDER BY e.created_at ASC LIMIT 30`)).rows;
+ // Sub-HQ receives all events currently attributed to its subordinate organization.
+ const subHqRows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,s.chat_id
+ FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
+ JOIN km_member_attributions a ON a.user_id=e.member_id
+ JOIN km_tg_subhq_chats s ON s.organization_id=a.sub_hq_id
+ JOIN km_organization_members m ON m.user_id=s.operator_id AND m.organization_id=s.organization_id AND m.role='SUB_HQ' AND m.status='ACTIVE'
+ JOIN km_organizations o ON o.id=s.organization_id AND o.type='SUB_HQ' AND o.status='ACTIVE'
+ JOIN km_organizations parent ON parent.id=o.parent_id AND parent.status='ACTIVE'
+ LEFT JOIN km_tg_deliveries d ON d.event_id=e.id AND d.chat_id=s.chat_id
+ WHERE e.created_at>NOW()-INTERVAL '7 days' AND s.created_at<=e.created_at
+ AND d.sent_at IS NULL AND COALESCE(d.attempts,0)<6
+ ORDER BY e.created_at ASC LIMIT 30`)).rows;
+ rows.push(...subHqRows.map((x:{id:string;kind:string;details:string;username:string;chat_id:string})=>({...x,code:"부본사 산하"})));
  const adminRows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,s.chat_id
  FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
  CROSS JOIN km_tg_admin_chats s
