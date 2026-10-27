@@ -26,3 +26,8 @@
 
 .kmMemberHeader .kmMemberLogo{display:block!important;width:204px!important;height:42px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}
 @media(max-width:600px){.kmMemberHeader .kmMemberLogo{width:155px!important;height:36px!important}}
+
+/* HFM KOREA official broker partner full lockup */
+.kmMemberHeader .kmMemberLogo{width:245px!important;height:64px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}
+@media(max-width:870px){.kmMemberHeader .kmMemberLogo{width:202px!important;height:49px!important}}
+@media(max-width:600px){.kmMemberHeader .kmMemberLogo{width:186px!important;height:48px!important}}
