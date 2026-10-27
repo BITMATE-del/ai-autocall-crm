@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import Link from "next/link";
 type Org={id:string;name:string;type:string;username:string|null;status?:string};
 const ROOT="00000000-0000-4000-8000-000000000001";
 const displayName=(x:Org)=>x.type==="HQ"&&x.name.trim().toUpperCase().includes("K-MARKETS")?"HFM KOREA 본사":x.name;
@@ -35,5 +36,5 @@ export default function Organizations(){
  <input aria-label="초기 비밀번호" placeholder="초기 비밀번호 (12자 이상)" type="password" minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/>
  <button className="am-primary" disabled={busy} onClick={create}>{busy?"생성 중":"생성"}</button></div>
  <p style={{fontSize:12,color:"#64748b",marginTop:11}}>아이디는 영문·숫자·밑줄만 사용합니다. 비밀번호는 최소 12자로 설정해 주세요.</p></section>
- <section className="am-panel"><h2>조직 목록</h2>{items.map(x=><div key={x.id} style={{padding:12,borderBottom:"1px solid #eee"}}><strong>{displayName(x)}</strong> · {x.type==="HQ"?"본사":x.type==="SUB_HQ"?"부본사":"영업자"} · {x.username||"본사"}</div>)}</section></>
+ <section className="am-panel"><h2>조직 목록</h2>{items.map(x=><div key={x.id} style={{padding:12,borderBottom:"1px solid #eee"}}><strong>{displayName(x)}</strong> · {x.type==="HQ"?"본사":x.type==="SUB_HQ"?"부본사":"영업자"} · {x.username||"본사"} {x.type!=="HQ"&&<Link href={"/admin/organization-permissions?organizationId="+x.id} style={{float:"right",fontWeight:700,color:"#bf2032",textDecoration:"none",border:"1px solid #ead4d8",padding:"7px 13px",borderRadius:7}}>권한 부여·회수</Link>}</div>)}</section></>
 }
