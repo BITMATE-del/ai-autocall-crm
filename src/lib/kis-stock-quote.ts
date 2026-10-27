@@ -4,7 +4,7 @@ type KisData={rt_cd?:string;msg1?:string;output?:Record<string,string>};
 let tokenCache:{value:string;expires:number}|undefined;
 let tokenPending:Promise<string>|undefined;
 const host="https://openapi.koreainvestment.com:9443";
-async function token(){
+export async function kisAccessToken(){
  const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
  if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
  if(tokenCache&&Date.now()<tokenCache.expires)return tokenCache.value;
@@ -21,7 +21,7 @@ export async function getKisStockQuote(symbol:string):Promise<KrQuote>{
  if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
  const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
  if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
- const access=await token();
+ const access=await kisAccessToken();
  const url=new URL(host+"/uapi/domestic-stock/v1/quotations/inquire-price");
  url.searchParams.set("FID_COND_MRKT_DIV_CODE","J");
  url.searchParams.set("FID_INPUT_ISCD",symbol);
@@ -36,4 +36,17 @@ export async function getKisStockQuote(symbol:string):Promise<KrQuote>{
  const asOf=new Date().toISOString();
  const kst=new Date(Date.now()+9*3600000),day=kst.getUTCDay(),minutes=kst.getUTCHours()*60+kst.getUTCMinutes();
  return {symbol,price,previousClose,asOf,provider:"KIS_REST",marketStatus:day>=1&&day<=5&&minutes>=540&&minutes<930?"REGULAR_SESSION":"CLOSED"};
+}
+
+export async function kisMarketRequest(path:string,trId:string,params:Record<string,string>){
+ const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
+ if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
+ const access=await kisAccessToken();
+ const url=new URL(host+path);
+ for(const [k,v] of Object.entries(params))url.searchParams.set(k,v);
+ const r=await fetch(url,{cache:"no-store",headers:{"authorization":"Bearer "+access,"appkey":key,"appsecret":secret,"tr_id":trId,"custtype":"P"},signal:AbortSignal.timeout(8500)});
+ if(!r.ok)throw Error("KIS_MARKET_HTTP_"+r.status);
+ const body=await r.json();
+ if(body?.rt_cd!=="0")throw Error("KIS_MARKET_RESPONSE_"+String(body?.msg_cd||"ERROR"));
+ return body as {rt_cd:string;output1?:Record<string,string>;output2?:Record<string,string>[]};
 }
