@@ -23,3 +23,6 @@
 .kmMemberNotifyItem small{color:#95a1b4}
 .kmMemberNotifyEmpty{padding:20px 10px;text-align:center;color:#8d9aab;font-size:12px}
 @media(max-width:600px){.kmMemberHeader .kmMemberNotifyPanel{right:-42px}}
+
+.kmMemberHeader .kmMemberLogo{display:block!important;width:204px!important;height:42px!important;max-width:100%!important;object-fit:contain!important;object-position:left center!important}
+@media(max-width:600px){.kmMemberHeader .kmMemberLogo{width:155px!important;height:36px!important}}
