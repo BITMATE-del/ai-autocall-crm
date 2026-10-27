@@ -10,3 +10,16 @@
 .kmMemberHeader .kmMemberNotification{display:flex!important;align-items:center!important;color:#8797b2!important;text-decoration:none!important}
 .kmMemberHeader .kmMemberProfile{width:35px!important;height:35px!important;border-radius:50%!important;background:#e3eafe!important;color:#4064d8!important;display:grid!important;place-items:center!important;font-size:12px!important;font-weight:800!important;text-decoration:none!important}
 @media(max-width:870px){.kmMemberHeader{height:auto!important;min-height:70px!important;grid-template-columns:1fr auto!important;grid-template-rows:52px 42px!important;gap:0 10px!important;padding:0 16px!important}.kmMemberHeader .kmMemberNav{grid-column:1/-1!important;grid-row:2!important;justify-content:flex-start!important;gap:22px!important;overflow-x:auto!important;max-width:calc(100vw - 32px)!important}.kmMemberHeader .kmMemberNav a{font-size:12px!important;flex-shrink:0!important}.kmMemberHeader .kmMemberActions{grid-column:2;grid-row:1}.kmMemberHeader .kmMemberBrand{grid-column:1;grid-row:1}}
+
+.kmMemberHeader .kmMemberNotifyWrap{position:relative;display:flex;align-items:center}
+.kmMemberHeader .kmMemberNotification{position:relative;border:0;background:transparent;padding:8px;cursor:pointer}
+.kmMemberNotifyDot{position:absolute;right:5px;top:5px;width:7px;height:7px;background:#ed5570;border:2px solid white;border-radius:50%}
+.kmMemberHeader .kmMemberNotifyPanel{position:absolute;right:-48px;top:calc(100% + 15px);width:min(350px,calc(100vw - 24px));max-height:430px;overflow-y:auto;background:#fff;border:1px solid #dce5f4;box-shadow:0 14px 42px rgba(28,54,100,.15);border-radius:12px;z-index:100;padding:8px;color:#193355}
+.kmMemberNotifyTitle{display:flex;justify-content:space-between;align-items:center;padding:10px;font-size:14px;font-weight:800;border-bottom:1px solid #e9eef5}
+.kmMemberNotifyTitle button{border:0;background:transparent;color:#76869e;cursor:pointer;font-size:12px}
+.kmMemberNotifyItem{padding:12px 10px;border-bottom:1px solid #edf1f6;font-size:12px}
+.kmMemberNotifyItem strong{font-size:12px;color:#204075}
+.kmMemberNotifyItem p{margin:6px 0;color:#455c7e}
+.kmMemberNotifyItem small{color:#95a1b4}
+.kmMemberNotifyEmpty{padding:20px 10px;text-align:center;color:#8d9aab;font-size:12px}
+@media(max-width:600px){.kmMemberHeader .kmMemberNotifyPanel{right:-42px}}
