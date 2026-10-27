@@ -8,6 +8,8 @@ type Me={username:string;role:string;permissions:string[]};
 const entries=[
  {name:"대시보드",href:"/partner",permission:"",icon:LayoutDashboard},
  {name:"소속 회원",href:"/partner/members",permission:"MEMBER_LIST",icon:Users},
+ {name:"고객센터 답변",href:"/partner/support",permission:"MEMBER_LIST",icon:MessageCircle},
+ {name:"입출금 요청·안내",href:"/partner/funding",permission:"FUNDING_HISTORY",icon:Wallet},
  {name:"영업자 관리",href:"/partner/agents",permission:"AGENT_CREATE",icon:UserRoundPlus},
  {name:"하부 권한 부여",href:"/partner/permissions",permission:"PERMISSION_DELEGATE",icon:ShieldCheck},
  {name:"추천코드",href:"/partner/referrals",permission:"REFERRAL_MANAGE",icon:Ticket},
