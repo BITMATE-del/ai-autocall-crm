@@ -125,7 +125,7 @@ export async function deliverAlerts(){
  AND COALESCE(d.attempts,0)<6 AND s.created_at<=e.created_at ORDER BY e.created_at ASC LIMIT 30`)).rows;
  rows.push(...adminRows.map((x:{id:string;kind:string;details:string;username:string;chat_id:string})=>({...x,code:"전체 관리자"})));
  for(const e of rows){
-  const ok=await send(e.chat_id,"[HFM KOREA] "+e.kind+"\\n담당코드: "+e.code+"\\n회원: "+e.username+"\\n"+e.details);
+  const ok=await send(e.chat_id,"[HFM KOREA] "+e.kind+"\n담당코드: "+e.code+"\n회원: "+e.username+"\n"+e.details);
   await database().query(`INSERT INTO km_tg_deliveries(event_id,chat_id,attempts,sent_at)
     VALUES($1,$2,1,CASE WHEN $3 THEN NOW() ELSE NULL END)
     ON CONFLICT(event_id,chat_id) DO UPDATE SET attempts=km_tg_deliveries.attempts+1,
