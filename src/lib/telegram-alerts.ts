@@ -13,6 +13,9 @@ async function schema(){
     token_hash TEXT PRIMARY KEY,agent_id UUID NOT NULL REFERENCES km_users(id),
     referral_code_id UUID NOT NULL REFERENCES km_referral_codes(id),
     expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)`);
+  await database().query(`CREATE TABLE IF NOT EXISTS km_tg_deliveries(
+    event_id UUID NOT NULL,chat_id TEXT NOT NULL,sent_at TIMESTAMPTZ,
+    attempts INT NOT NULL DEFAULT 0,PRIMARY KEY(event_id,chat_id))`);
   await database().query(`CREATE TABLE IF NOT EXISTS km_tg_events(
     id UUID PRIMARY KEY,member_id UUID NOT NULL REFERENCES km_users(id),
     kind TEXT NOT NULL,details TEXT NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -75,6 +78,7 @@ export async function enqueueAlert(id:string,member:string,kind:string,details:s
 export async function deliverAlerts(){
  if(!process.env.HFM_TELEGRAM_BOT_TOKEN)return {sent:0};
  await schema();let sent=0;
+ // Every subscribed chat has its own delivery checkpoint; never drop additional agents.
  const rows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,r.code,s.chat_id
  FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
  JOIN km_member_attributions a ON a.user_id=e.member_id
@@ -83,12 +87,16 @@ export async function deliverAlerts(){
  JOIN km_organization_members m ON m.user_id=s.agent_id AND m.organization_id=r.organization_id AND m.status='ACTIVE'
  JOIN km_organizations o ON o.id=r.organization_id AND o.status='ACTIVE'
  LEFT JOIN km_organizations parent ON parent.id=o.parent_id
- WHERE e.delivered_at IS NULL AND e.attempts<6
- AND (parent.status IS NULL OR parent.status='ACTIVE')
+ LEFT JOIN km_tg_deliveries d ON d.event_id=e.id AND d.chat_id=s.chat_id
+ WHERE e.created_at>NOW()-INTERVAL '7 days' AND(d.sent_at IS NULL)
+ AND COALESCE(d.attempts,0)<6 AND(parent.status IS NULL OR parent.status='ACTIVE')
  ORDER BY e.created_at ASC LIMIT 30`)).rows;
  for(const e of rows){
-  const ok=await send(e.chat_id,"[HFM KOREA] "+e.kind+"\n담당코드: "+e.code+"\n회원: "+e.username+"\n"+e.details);
-  await database().query("UPDATE km_tg_events SET attempts=attempts+1,delivered_at=CASE WHEN $2 THEN NOW() ELSE delivered_at END WHERE id=$1",[e.id,ok]);
+  const ok=await send(e.chat_id,"[HFM KOREA] "+e.kind+"\\n담당코드: "+e.code+"\\n회원: "+e.username+"\\n"+e.details);
+  await database().query(`INSERT INTO km_tg_deliveries(event_id,chat_id,attempts,sent_at)
+    VALUES($1,$2,1,CASE WHEN $3 THEN NOW() ELSE NULL END)
+    ON CONFLICT(event_id,chat_id) DO UPDATE SET attempts=km_tg_deliveries.attempts+1,
+    sent_at=CASE WHEN $3 THEN NOW() ELSE km_tg_deliveries.sent_at END`,[e.id,e.chat_id,ok]);
   if(ok)sent++;
  }
  return {sent};
