@@ -19,5 +19,17 @@ const passwordHash=await bcrypt.hash(password,12);
 const u=(await c.query("INSERT INTO km_users(email,username,password_hash) VALUES($1,$2,$3) RETURNING id",[username.toLowerCase()+"@local.kmarkets.invalid",username,passwordHash])).rows[0];
 const org=(await c.query("INSERT INTO km_organizations(type,name,parent_id,created_by) VALUES($1,$2,$3,$4) RETURNING id",[type,name,parent,a.id])).rows[0];
 await c.query("INSERT INTO km_organization_members(organization_id,user_id,role) VALUES($1,$2,$3)",[org.id,u.id,type]);
+const initialKeys=type==="AGENT"?PERMISSIONS.filter(key=>AGENT_PERMISSIONS.has(key)):PERMISSIONS;
+let permittedKeys=initialKeys;
+if(type==="AGENT"&&p.type==="SUB_HQ"){
+ const delegated=await grantsFor(parent);
+ permittedKeys=initialKeys.filter(key=>delegated.some(g=>g.key===key&&g.canDelegate));
+}
+for(const key of permittedKeys){
+ const canDelegate=type==="SUB_HQ"&&AGENT_PERMISSIONS.has(key);
+ await c.query("INSERT INTO km_permission_grants(subject_id,permission_key,granted_by,granted_status,can_delegate) VALUES($1,$2,$3,'ACTIVE',$4)",[org.id,key,a.id,canDelegate]);
+ await c.query("INSERT INTO km_permission_change_logs(actor_id,subject_id,permission_key,old_value,new_value,reason) VALUES($1,$2,$3,NULL,$4::jsonb,$5)",[a.id,org.id,key,JSON.stringify({active:true,canDelegate}),"조직 생성 기본 권한 부여"]);
+}
+
 await c.query("INSERT INTO km_management_audit_logs(actor_id,target_id,action,after_data) VALUES($1,$2,$3,$4::jsonb)",[a.id,org.id,"ORG_CREATED",JSON.stringify({type,parent,username})]);
 await c.query("COMMIT");return NextResponse.json({id:org.id,username,type},{status:201})}catch(e){await c.query("ROLLBACK");if((e as {code?:string}).code==="23505")return error("USERNAME_TAKEN",409);console.error("ORG_CREATE",e instanceof Error?e.message:e);return error("ORG_CREATE_FAILED",503)}finally{c.release()}}
