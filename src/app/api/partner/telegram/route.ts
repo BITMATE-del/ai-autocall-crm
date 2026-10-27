@@ -34,3 +34,14 @@ export async function POST(req:NextRequest){
  const token=await makePairToken(u.id,r.rows[0].id);
  return NextResponse.json({pairCommand:"/start "+token,expiresMinutes:10},{headers:{"Cache-Control":"no-store"}});
 }
+
+export async function DELETE(req:NextRequest){
+ const u=await currentUser();if(!u?.id)return NextResponse.json({error:"LOGIN_REQUIRED"},{status:401});
+ const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||req.nextUrl.host).split(",")[0].trim();
+ if(!origin||new URL(origin).host!==host)return NextResponse.json({error:"INVALID_ORIGIN"},{status:403});
+ const a=await actorFor(u.id);if(!a?.active)return NextResponse.json({error:"FORBIDDEN"},{status:403});
+ if(a.role==="SUB_HQ"){await database().query("DELETE FROM km_tg_subhq_chats WHERE operator_id=$1 AND organization_id=$2",[u.id,a.org]);}
+ else if(a.role==="AGENT"){await database().query("DELETE FROM km_tg_subscriptions WHERE agent_id=$1",[u.id]);}
+ else return NextResponse.json({error:"FORBIDDEN"},{status:403});
+ return NextResponse.json({ok:true});
+}
