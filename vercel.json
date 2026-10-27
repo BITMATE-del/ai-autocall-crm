@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/cfd-settle",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/telegram/dispatch",
+      "schedule": "* * * * *"
     }
   ]
 }
