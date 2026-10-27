@@ -60,9 +60,8 @@ export async function getKisTradeQuote(symbol:string):Promise<KrQuote>{
  const item=(body as unknown as {output?:Record<string,string>[]}).output?.[0];
  const hour=String(item?.stck_cntg_hour||"");
  const price=Number(item?.stck_pbpr??item?.stck_prpr);
- if(!/^\\d{6}$/.test(hour)||!Number.isSafeInteger(price)||price<=0||!Number.isSafeInteger(change)||!["1","2","3","4","5"].includes(sign))throw Error("KIS_EXECUTION_INVALID");
- const previousClose=price-(["1","2"].includes(sign)?change:["4","5"].includes(sign)?-change:0);
- if(!Number.isSafeInteger(previousClose)||previousClose<=0)throw Error("KIS_PREVIOUS_CLOSE_INVALID");
+ if(!/^\\d{6}$/.test(hour)||!Number.isSafeInteger(price)||price<=0)throw Error("KIS_EXECUTION_INVALID");
+ const previousClose=(await getKisStockQuote(symbol)).previousClose;
  const date=kst.toISOString().slice(0,10);
  const asOfDate=new Date(date+"T"+hour.slice(0,2)+":"+hour.slice(2,4)+":"+hour.slice(4,6)+"+09:00");
  const age=now-asOfDate.getTime();
