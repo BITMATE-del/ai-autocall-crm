@@ -139,7 +139,7 @@ export async function deliverAlerts(){
  const rows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,r.code,s.chat_id
  FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
  JOIN km_member_attributions a ON a.user_id=e.member_id
- JOIN km_referral_codes r ON r.id=a.referral_code_id AND r.status='ACTIVE'
+ JOIN km_referral_codes r ON r.id=a.referral_code_id AND r.status='ACTIVE' AND r.organization_id=a.organization_id AND r.agent_id=a.agent_id
  JOIN km_tg_subscriptions s ON s.referral_code_id=r.id AND s.agent_id=r.agent_id
  JOIN km_organization_members m ON m.user_id=s.agent_id AND m.organization_id=r.organization_id AND m.status='ACTIVE'
  JOIN km_organizations o ON o.id=r.organization_id AND o.status='ACTIVE'
@@ -152,7 +152,7 @@ export async function deliverAlerts(){
  const subHqRows=(await database().query(`SELECT e.id,e.kind,e.details,u.username,s.chat_id
  FROM km_tg_events e JOIN km_users u ON u.id=e.member_id
  JOIN km_member_attributions a ON a.user_id=e.member_id
- JOIN km_tg_subhq_chats s ON s.organization_id=a.sub_hq_id
+ JOIN km_tg_subhq_chats s ON s.organization_id=COALESCE(a.sub_hq_id, CASE WHEN a.organization_id IN (SELECT id FROM km_organizations WHERE type='SUB_HQ') THEN a.organization_id ELSE NULL END)
  JOIN km_organization_members m ON m.user_id=s.operator_id AND m.organization_id=s.organization_id AND m.role='SUB_HQ' AND m.status='ACTIVE'
  JOIN km_organizations o ON o.id=s.organization_id AND o.type='SUB_HQ' AND o.status='ACTIVE'
  JOIN km_organizations parent ON parent.id=o.parent_id AND parent.status='ACTIVE'
