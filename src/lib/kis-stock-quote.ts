@@ -50,3 +50,22 @@ export async function kisMarketRequest(path:string,trId:string,params:Record<str
  if(body?.rt_cd!=="0")throw Error("KIS_MARKET_RESPONSE_"+String(body?.msg_cd||"ERROR"));
  return body as {rt_cd:string;output1?:Record<string,string>;output2?:Record<string,string>[]};
 }
+
+/** Trade authorization requires a dated, recent official KIS execution, never receipt time. */
+export async function getKisTradeQuote(symbol:string):Promise<KrQuote>{
+ if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
+ const now=Date.now(),kst=new Date(now+9*3600000),day=kst.getUTCDay(),min=kst.getUTCHours()*60+kst.getUTCMinutes();
+ if(day<1||day>5||min<540||min>=930)throw Error("MARKET_NOT_TRADABLE");
+ const body=await kisMarketRequest("/uapi/domestic-stock/v1/quotations/inquire-ccnl","FHKST01010300",{FID_COND_MRKT_DIV_CODE:"J",FID_INPUT_ISCD:symbol});
+ const item=(body as unknown as {output?:Record<string,string>[]}).output?.[0];
+ const hour=String(item?.stck_cntg_hour||"");
+ const price=Number(item?.stck_prpr),change=Number(item?.prdy_vrss),sign=String(item?.prdy_vrss_sign||"");
+ if(!/^\\d{6}$/.test(hour)||!Number.isSafeInteger(price)||price<=0||!Number.isSafeInteger(change)||!["1","2","3","4","5"].includes(sign))throw Error("KIS_EXECUTION_INVALID");
+ const previousClose=price-(["1","2"].includes(sign)?change:["4","5"].includes(sign)?-change:0);
+ if(!Number.isSafeInteger(previousClose)||previousClose<=0)throw Error("KIS_PREVIOUS_CLOSE_INVALID");
+ const date=kst.toISOString().slice(0,10);
+ const asOfDate=new Date(date+"T"+hour.slice(0,2)+":"+hour.slice(2,4)+":"+hour.slice(4,6)+"+09:00");
+ const age=now-asOfDate.getTime();
+ if(!Number.isFinite(age)||age< -5000||age>60000)throw Error("KIS_EXECUTION_STALE");
+ return {symbol,price,previousClose,asOf:asOfDate.toISOString(),provider:"KIS_REST",marketStatus:"REGULAR_SESSION"};
+}
