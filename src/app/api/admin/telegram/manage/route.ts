@@ -4,13 +4,14 @@ export const dynamic="force-dynamic";
 export async function GET(){
  const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return NextResponse.json({error:"FORBIDDEN"},{status:403});
  try{
- const [hq,sub,agent,stats]=await Promise.all([
+ const [hq,sub,agent,stats,deliveryStats]=await Promise.all([
  database().query("SELECT chat_id,admin_id AS owner,created_at,'ADMIN' AS role FROM km_tg_admin_chats ORDER BY created_at DESC LIMIT 100"),
  database().query("SELECT chat_id,operator_id AS owner,organization_id::text AS scope,created_at,'SUB_HQ' AS role FROM km_tg_subhq_chats ORDER BY created_at DESC LIMIT 100"),
  database().query("SELECT s.chat_id,s.agent_id AS owner,r.code AS scope,s.created_at,'AGENT' AS role FROM km_tg_subscriptions s JOIN km_referral_codes r ON r.id=s.referral_code_id ORDER BY s.created_at DESC LIMIT 100"),
- database().query("SELECT COUNT(*) FILTER(WHERE created_at>NOW()-INTERVAL '1 day')::int AS daily FROM km_tg_events")
+ database().query("SELECT COUNT(*) FILTER(WHERE created_at>NOW()-INTERVAL '1 day')::int AS daily FROM km_tg_events"),
+ database().query("SELECT COUNT(*) FILTER(WHERE sent_at IS NOT NULL)::int AS sent,COUNT(*) FILTER(WHERE sent_at IS NULL AND attempts>0)::int AS failed FROM km_tg_deliveries")
  ]);
- return NextResponse.json({connections:[...hq.rows,...sub.rows,...agent.rows],daily:stats.rows[0]?.daily||0},{headers:{"Cache-Control":"no-store"}});
+ return NextResponse.json({connections:[...hq.rows,...sub.rows,...agent.rows],daily:stats.rows[0]?.daily||0,delivery:deliveryStats.rows[0]||{sent:0,failed:0}},{headers:{"Cache-Control":"no-store"}});
  }catch{return NextResponse.json({error:"NOT_READY"},{status:503})}
 }
 export async function DELETE(req:NextRequest){
