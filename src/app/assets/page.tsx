@@ -2,7 +2,7 @@
 import MemberHeader from "@/components/MemberHeader";
 import {useEffect,useState} from "react";
 import Link from "next/link";
-import {Wallet,UserRound,History,ShieldCheck,ArrowUpRight,ArrowDownRight,LogOut,RefreshCw,ChevronRight} from "lucide-react";
+import {Wallet,UserRound,History,ShieldCheck,ArrowUpRight,ArrowDownRight,LogOut,RefreshCw,ChevronRight,X} from "lucide-react";
 import "./style.css";
 type Trade={id:string;symbol:string;direction:string;duration_minutes:number;amount_krw:number;result:string|null;status:string;payout_krw:number|null;created_at:string};
 type Ledger={id:string;kind:string;delta_krw:number;created_at:string};
