@@ -1,0 +1,39 @@
+/** Korea Investment & Securities market-data only. No order endpoints. */
+import type {KrQuote} from "@/lib/kr-stock-quote";
+type KisData={rt_cd?:string;msg1?:string;output?:Record<string,string>};
+let tokenCache:{value:string;expires:number}|undefined;
+let tokenPending:Promise<string>|undefined;
+const host="https://openapi.koreainvestment.com:9443";
+async function token(){
+ const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
+ if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
+ if(tokenCache&&Date.now()<tokenCache.expires)return tokenCache.value;
+ if(!tokenPending)tokenPending=(async()=>{
+ const r=await fetch(host+"/oauth2/tokenP",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({grant_type:"client_credentials",appkey:key,appsecret:secret}),signal:AbortSignal.timeout(7000),cache:"no-store"});
+ if(!r.ok)throw Error("KIS_AUTH_UNAVAILABLE");
+ const json=await r.json();if(!json.access_token)throw Error("KIS_AUTH_REJECTED");
+ const value=String(json.access_token);const seconds=Math.max(60,Math.min(82800,Number(json.expires_in)||21600));
+ tokenCache={value,expires:Date.now()+seconds*1000-60000};return value;
+ })().finally(()=>{tokenPending=undefined});
+ return tokenPending;
+}
+export async function getKisStockQuote(symbol:string):Promise<KrQuote>{
+ if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
+ const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
+ if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
+ const access=await token();
+ const url=new URL(host+"/uapi/domestic-stock/v1/quotations/inquire-price");
+ url.searchParams.set("FID_COND_MRKT_DIV_CODE","J");
+ url.searchParams.set("FID_INPUT_ISCD",symbol);
+ const r=await fetch(url,{cache:"no-store",headers:{"authorization":"Bearer "+access,"appkey":key,"appsecret":secret,"tr_id":"FHKST01010100","custtype":"P"},signal:AbortSignal.timeout(7000)});
+ if(!r.ok)throw Error("KIS_QUOTE_HTTP_"+r.status);
+ const body=await r.json() as KisData;
+ if(body.rt_cd!=="0"||!body.output)throw Error("KIS_QUOTE_UNAVAILABLE");
+ const d=body.output;const price=Number(d.stck_prpr),previousClose=Number(d.stck_sdpr);
+ if(!Number.isSafeInteger(price)||price<=0||!Number.isSafeInteger(previousClose)||previousClose<=0)throw Error("KIS_INVALID_PRICE");
+ // REST current-price response does not establish a trustworthy complete quote timestamp.
+ // Do not use this adapter to authorize trading until independently verified.
+ const asOf=new Date().toISOString();
+ const kst=new Date(Date.now()+9*3600000),day=kst.getUTCDay(),minutes=kst.getUTCHours()*60+kst.getUTCMinutes();
+ return {symbol,price,previousClose,asOf,provider:"KIS_REST",marketStatus:day>=1&&day<=5&&minutes>=540&&minutes<930?"REGULAR_SESSION":"CLOSED"};
+}
