@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
 import {currentUser,database} from "@/lib/auth";
-import {actorFor,PERMISSIONS,AGENT_PERMISSIONS} from "@/lib/org-access";
+import {actorFor,grantsFor,PERMISSIONS,AGENT_PERMISSIONS} from "@/lib/org-access";
 export const dynamic="force-dynamic";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 export async function POST(req:Request){
@@ -13,9 +13,13 @@ export async function POST(req:Request){
  const client=await database().connect();
  try{
   await client.query("BEGIN");
-  const org=(await client.query("SELECT id,type,status FROM km_organizations WHERE id=$1 FOR UPDATE",[id])).rows[0];
+  const org=(await client.query("SELECT id,type,status,parent_id FROM km_organizations WHERE id=$1 FOR UPDATE",[id])).rows[0];
   if(!org||org.type==="HQ"||org.status!=="ACTIVE"){await client.query("ROLLBACK");return fail("INVALID_ORGANIZATION",403)}
-  const keys=org.type==="AGENT"?PERMISSIONS.filter(key=>AGENT_PERMISSIONS.has(key)):PERMISSIONS;
+  let keys=org.type==="AGENT"?PERMISSIONS.filter(key=>AGENT_PERMISSIONS.has(key)):PERMISSIONS;
+  if(org.type==="AGENT"){
+   const parent=(await client.query("SELECT type FROM km_organizations WHERE id=$1",[org.parent_id])).rows[0];
+   if(parent?.type==="SUB_HQ"){const allowed=await grantsFor(org.parent_id);keys=keys.filter(key=>allowed.some(g=>g.key===key&&g.canDelegate));}
+  }
   for(const key of keys){
    const delegate=org.type==="SUB_HQ"&&AGENT_PERMISSIONS.has(key);
    const previous=(await client.query("SELECT granted_status,can_delegate FROM km_permission_grants WHERE subject_id=$1 AND permission_key=$2",[id,key])).rows[0]||null;
