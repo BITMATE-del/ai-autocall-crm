@@ -8,6 +8,7 @@ export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQu
  }
 
  if(forTrade&&process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")throw Error("STOCK_TRADING_NOT_CONFIGURED");
+ if(forTrade&&process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){const {getKisTradeQuote}=await import("@/lib/kis-stock-quote");return getKisTradeQuote(symbol)}
  const numeric=(x:unknown)=>Number(String(x??"").replace(/,/g,""));
  let price=NaN,previousClose=NaN,raw="";
  const errors:string[]=[];
