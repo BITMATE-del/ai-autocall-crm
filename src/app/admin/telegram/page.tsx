@@ -1,20 +1,39 @@
 "use client";
 import {useState} from "react";
 import TelegramPairing from "@/components/TelegramPairing";
+type Connection={chat_id:string;role:string;scope?:string;owner:string};
 export default function Page(){
  const [status,setStatus]=useState(""),[busy,setBusy]=useState(false);
- async function setup(){
-  setBusy(true);setStatus("");
-  try{const r=await fetch("/api/admin/telegram/setup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
-   const j=await r.json();if(!r.ok)throw Error(j.error||"웹훅 연결 실패");
-   setStatus("텔레그램 웹훅 연결 완료");
-  }catch(e){setStatus(e instanceof Error?e.message:"웹훅 연결 실패")}
-  finally{setBusy(false)}
- }
+ const [connections,setConnections]=useState<Connection[]>([]),[listed,setListed]=useState(false);
+ async function setup(){setBusy(true);setStatus("");try{
+ const r=await fetch("/api/admin/telegram/setup",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+ const j=await r.json();if(!r.ok)throw Error(j.error||"웹훅 연결 실패");setStatus("웹훅 연결 완료");
+ }catch(e){setStatus(e instanceof Error?e.message:"연결 실패")}finally{setBusy(false)}}
+ async function list(){try{const r=await fetch("/api/admin/telegram/manage",{cache:"no-store"});const j=await r.json();if(!r.ok)throw Error(j.error);setConnections(j.connections||[]);setListed(true)}catch(e){setStatus(String(e))}}
+ async function action(kind:"test"|"delete",x:Connection){
+ if(kind==="delete"&&!confirm("이 연결의 알림 수신을 해제할까요?"))return;
+ try{const r=await fetch(kind==="test"?"/api/admin/telegram/test":"/api/admin/telegram/manage",{
+ method:kind==="test"?"POST":"DELETE",headers:{"Content-Type":"application/json"},
+ body:JSON.stringify({chat:x.chat_id,role:x.role,scope:x.scope||""})});
+ const j=await r.json();if(!r.ok)throw Error(j.error||"처리 실패");
+ setStatus(kind==="test"?"테스트 발송 완료":"연결 해제 완료");if(kind==="delete")await list();
+ }catch(e){setStatus(String(e))}}
  return <><div className="am-heading"><h1>텔레그램 운영 알림</h1></div>
- <section style={{maxWidth:630,background:"white",padding:20,borderRadius:12,marginBottom:14}}>
- <p>BotFather에서 발급한 토큰과 웹훅 인증키를 회원·관리자 서버 환경변수에 등록한 다음 연결하세요.</p>
- <button disabled={busy} onClick={setup} style={{padding:"10px 16px",background:"#bf2032",color:"white",border:0,borderRadius:7}}>{busy?"연결 중":"봇 웹훅 연결"}</button>
- {status&&<p role="status">{status}</p>}
- </section><TelegramPairing admin/></>;
+ <section style={{background:"white",padding:20,borderRadius:12,marginBottom:14,maxWidth:730}}>
+  <p>Vercel 환경변수에 봇 토큰 및 웹훅 인증키를 설정한 다음 연결하세요.</p>
+  <button disabled={busy} onClick={setup}>{busy?"연결 중":"봇 웹훅 연결"}</button>
+  {status&&<p role="status">{status}</p>}
+ </section>
+ <TelegramPairing admin/>
+ <section style={{background:"white",padding:20,borderRadius:12,marginTop:18,maxWidth:900}}>
+ <h2>수신 담당자 관리</h2>
+ <button onClick={list}>연결 현황 새로고침</button>
+ {listed&&<div style={{overflowX:"auto",marginTop:15}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+ <thead><tr><th>구분</th><th>수신 범위</th><th>채팅 식별자</th><th>관리</th></tr></thead><tbody>
+ {connections.map((x,i)=><tr key={x.chat_id+x.role+i}>
+ <td>{x.role}</td><td>{x.scope||"전체"}</td><td>{x.chat_id.slice(0,4)}***</td>
+ <td><button onClick={()=>action("test",x)}>테스트</button>{" "}<button onClick={()=>action("delete",x)}>연결 해제</button></td></tr>)}
+ {!connections.length&&<tr><td colSpan={4}>연결된 담당자가 없습니다.</td></tr>}
+ </tbody></table></div>}
+ </section></>;
 }
