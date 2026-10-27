@@ -1,3 +1,4 @@
+import {getKisMinuteCandles} from "@/lib/kis-stock-chart";
 import {NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Bar={time:number;open:number;high:number;low:number;close:number;volume:number};
@@ -5,6 +6,12 @@ export async function GET(req:Request){
  const u=new URL(req.url),symbol=u.searchParams.get("symbol")||"",period=u.searchParams.get("period")||"minute1";
  if(!/^\d{6}$/.test(symbol)||!["minute1","minute3","minute5","minute15"].includes(period))return NextResponse.json({error:"INVALID_QUERY"},{status:400});
  const size=period==="minute3"?3:period==="minute5"?5:period==="minute15"?15:1;
+ if(process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){
+  try{const candles=await getKisMinuteCandles(symbol,size);
+   return NextResponse.json({symbol,period,source:"KIS_OFFICIAL_MINUTE",approximateOHLC:false,candles},{headers:{"Cache-Control":"no-store"}});
+  }catch(e){console.warn("KIS_MINUTE_FALLBACK",e instanceof Error?e.message:"UNAVAILABLE")}
+ }
+
  try{
   const upstream=await fetch("https://fchart.stock.naver.com/sise.nhn?symbol="+symbol+"&timeframe=minute&count=5000&requestType=0",{cache:"no-store",signal:AbortSignal.timeout(8000)});
   if(!upstream.ok)throw Error("UPSTREAM_ERROR");
