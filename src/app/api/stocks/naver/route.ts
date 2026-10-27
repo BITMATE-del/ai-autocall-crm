@@ -1,3 +1,5 @@
+import {getKisDailyCandles} from "@/lib/kis-stock-chart";
+import {getKisStockQuote} from "@/lib/kis-stock-quote";
 import {NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 const number=(v:unknown)=>Number(String(v??"").replace(/,/g,""));
@@ -5,6 +7,13 @@ export async function GET(req:Request){
  const url=new URL(req.url),symbol=String(url.searchParams.get("symbol")||"");
  if(!/^\d{6}$/.test(symbol))return NextResponse.json({error:"INVALID_SYMBOL"},{status:400});
  const period=String(url.searchParams.get("period")||"day");
+ if(process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){
+  try{
+   const [candles,quote]=await Promise.all([getKisDailyCandles(symbol,period),getKisStockQuote(symbol)]);
+   return NextResponse.json({source:"KIS_OFFICIAL_DAILY",tradeable:false,symbol,name:symbol,price:quote.price,change:quote.price-quote.previousClose,rate:(quote.price-quote.previousClose)/quote.previousClose*100,marketStatus:quote.marketStatus,asOf:quote.asOf,candles},{headers:{"Cache-Control":"no-store"}});
+  }catch(e){console.warn("KIS_DAILY_FALLBACK",e instanceof Error?e.message:"UNAVAILABLE")}
+ }
+
  
  try{
  const [quoteRes,historyRes]=await Promise.all([
