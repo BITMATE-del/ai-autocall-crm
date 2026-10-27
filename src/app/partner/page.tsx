@@ -6,6 +6,7 @@ type Me={username:string;role:string;permissions:string[]};
 const links=[
  {name:"소속 회원 조회",description:"담당 조직의 회원 목록 및 정보",href:"/partner/members",permission:"MEMBER_LIST",icon:Users},
  {name:"영업자 관리",description:"산하 영업자 생성 및 관리",href:"/partner/agents",permission:"AGENT_CREATE",icon:UserRoundPlus},
+ {name:"영업자 권한 부여",description:"보유 권한을 하위 영업자에게 즉시 부여",href:"/partner/permissions",permission:"PERMISSION_DELEGATE",icon:ShieldCheck},
  {name:"추천코드 관리",description:"가입용 추천코드 확인",href:"/partner/referrals",permission:"REFERRAL_MANAGE",icon:Ticket},
  {name:"입금 실적·배분",description:"권한 내 실적 및 정산 확인",href:"/partner/deposit-shares",permission:"PERFORMANCE_VIEW",icon:TrendingUp},
  {name:"출금 검토 요청",description:"출금 관련 검토 요청",href:"/partner/withdraw-holds",permission:"WITHDRAW_HOLD_REQUEST",icon:Wallet},
