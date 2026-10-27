@@ -1,0 +1,1 @@
+import TelegramPairing from "@/components/TelegramPairing";export default function Page(){return <><div className="am-heading"><h1>텔레그램 운영 알림</h1></div><TelegramPairing admin/></>}
