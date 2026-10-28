@@ -37,3 +37,14 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .kmOrderModal p{font-size:14px;line-height:1.7;color:#51647c;margin:0 0 24px;overflow-wrap:anywhere}
 .kmOrderModal button{width:100%;background:#bd2034;border:0;border-radius:10px;padding:13px;color:white;font-weight:700;cursor:pointer}
 .kmOrderModal button:focus-visible{outline:3px solid #a2b8f8;outline-offset:2px}
+
+/* Precisely align both bottom stock data tables */
+.bottomPanels{align-items:stretch}
+.bottomPanels>.panel{display:flex;flex-direction:column;min-width:0}
+.bottomPanels .panelHeading{min-height:49px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between}
+.bottomPanels .tableWrap{flex:1;min-height:0;padding-top:11px;padding-bottom:18px;box-sizing:border-box}
+.bottomPanels .tbl{table-layout:fixed;width:100%;border-collapse:collapse}
+.bottomPanels .tbl thead tr{height:42px}
+.bottomPanels .tbl tbody tr{height:45px}
+.bottomPanels .tbl th,.bottomPanels .tbl td{height:45px;box-sizing:border-box;vertical-align:middle;padding-top:8px;padding-bottom:8px;line-height:18px}
+.bottomPanels .tbl th{height:42px}
