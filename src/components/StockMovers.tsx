@@ -16,7 +16,7 @@ export default function StockMovers(){
  const sections:[string,keyof Pick<Data,"rising"|"falling"|"active">,string][]=[["상승률 상위","rising","#d63b53"],["하락률 상위","falling","#356de1"],["거래대금 상위","active","#647fbe"]];
  return <section className="kmHSection" style={{marginTop:20}}>
  <div className="kmHSectionTitle" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
- <div><span style={{fontSize:11,fontWeight:800,color:"#5879ba",letterSpacing:1}}>STOCK MOVERS</span><h2>국내주식 등락 랭킹</h2><p>{data?.source==="KIS_RANKING"?"한국투자증권 KIS 순위 · KRX 기준":data?"일별 시장 데이터 기준":"KIS 시장 순위 조회 중"}{data?.asOfTime&&" · "+new Date(data.asOfTime).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})+" 조회"}</p></div>
+ <div><span style={{fontSize:11,fontWeight:800,color:"#5879ba",letterSpacing:1}}>STOCK MOVERS</span><h2>국내주식 등락 랭킹</h2></div>
  </div>
  {error&&<p role="alert" style={{color:"#bf2032",padding:14}}>{error} 이전 날짜 순위는 표시하지 않습니다.</p>}
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(245px,1fr))",gap:12,marginTop:17}}>
@@ -27,7 +27,7 @@ export default function StockMovers(){
  <div style={{flex:1,minWidth:0}}><strong style={{fontSize:13,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.name}</strong><span style={{fontSize:11,color:"#8491a4"}}>{x.code}</span></div>
  <div style={{textAlign:"right",fontSize:12}}><strong style={{display:"block"}}>{fmt(x.price)}원</strong><span style={{color:x.rate>=0?"#d63b53":"#356de1"}}>{x.rate>0?"+":""}{x.rate.toFixed(2)}%</span></div>
  </Link>)}
- {!data?.[key]?.length&&<p style={{fontSize:12,color:"#8290a4"}}>{busy?"조회 중":"순위 정보 없음"}</p>}</div>)}
+ {!data?.[key]?.length&&<p style={{fontSize:12,color:"#8290a4"}}>{busy?"조회 중":"집계된 종목 없음"}</p>}</div>)}
  </div>
  </section>
 }
