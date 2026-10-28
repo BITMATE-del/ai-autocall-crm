@@ -12,8 +12,8 @@ function mapKis(rows:KisRow[]):Mover[]{
  })).filter(x=>/^\d{6}$/.test(x.code)&&x.name.length>0&&x.price>0&&Number.isFinite(x.rate)&&Number.isFinite(x.tradingValue)).filter(x=>{if(seen.has(x.code))return false;seen.add(x.code);return true});
 }
 async function kisMovers(){
- const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"0",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"",FID_INPUT_PRICE_2:"",FID_VOL_CNT:"",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0",FID_DIV_CLS_CODE:"0",FID_RSFL_RATE1:"",FID_RSFL_RATE2:""};
- const fluct=(sort:string)=>kisMarketRequest("/uapi/domestic-stock/v1/ranking/fluctuation","FHPST01700000",{...common,FID_RANK_SORT_CLS_CODE:sort});
+ const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"30",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"0",FID_INPUT_PRICE_2:"1000000",FID_VOL_CNT:"0",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0",FID_DIV_CLS_CODE:"0",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"};
+ const fluct=(sort:string)=>kisMarketRequest("/uapi/domestic-stock/v1/ranking/fluctuation","FHPST01700000",{...common,FID_RANK_SORT_CLS_CODE:"0000"});
  const volume=kisMarketRequest("/uapi/domestic-stock/v1/quotations/volume-rank","FHPST01710000",{
  FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20171",FID_INPUT_ISCD:"0000",FID_DIV_CLS_CODE:"0",FID_BLNG_CLS_CODE:"3",
  FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0000000000",FID_INPUT_PRICE_1:"",FID_INPUT_PRICE_2:"",FID_VOL_CNT:"",FID_INPUT_DATE_1:""});
