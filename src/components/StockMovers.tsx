@@ -8,7 +8,7 @@ export default function StockMovers(){
  const [data,setData]=useState<Data|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  async function load(){setBusy(true);try{
  const r=await fetch("/api/market-movers",{cache:"no-store"}),j=await r.json().catch(()=>null);
- if(!r.ok||!j?.rising)throw Error("시세 순위를 불러올 수 없습니다.");
+ if(!r.ok||!j?.rising)throw Error(j?.detail?"순위 조회 오류: "+j.detail:"시세 순위를 불러올 수 없습니다.");
  setData(j);setError("");
  }catch(e){setError(e instanceof Error?e.message:"조회 실패");setData(null)}finally{setBusy(false)}}
  useEffect(()=>{void load();const id=setInterval(()=>void load(),120000);return()=>clearInterval(id)},[]);
@@ -16,7 +16,6 @@ export default function StockMovers(){
  return <section className="kmHSection" style={{marginTop:20}}>
  <div className="kmHSectionTitle" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
  <div><span style={{fontSize:11,fontWeight:800,color:"#5879ba",letterSpacing:1}}>STOCK MOVERS</span><h2>국내주식 등락 랭킹</h2><p>{data?.source==="KIS_RANKING"?"한국투자증권 KIS 순위 · KRX 기준":data?"일별 시장 데이터 기준":"KIS 시장 순위 조회 중"}{data?.asOfTime&&" · "+new Date(data.asOfTime).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})+" 조회"}</p></div>
- <button disabled={busy} onClick={()=>void load()} style={{border:"1px solid #dce3ec",background:"#fff",padding:"9px 14px",borderRadius:8,cursor:"pointer"}}>{busy?"새로고침 중":"새로고침"}</button>
  </div>
  {error&&<p role="alert" style={{color:"#bf2032",padding:14}}>{error} 이전 날짜 순위는 표시하지 않습니다.</p>}
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(245px,1fr))",gap:12,marginTop:17}}>
