@@ -28,6 +28,5 @@ export default function StockMovers(){
  </Link>)}
  {!data?.[key]?.length&&<p style={{fontSize:12,color:"#8290a4"}}>{busy?"조회 중":"순위 정보 없음"}</p>}</div>)}
  </div>
- {data?.note&&<p style={{fontSize:11,color:"#8290a4",marginTop:12}}>{data.note}</p>}
  </section>
 }
