@@ -31,7 +31,7 @@ export default function Referrals(){
    <select aria-label="영업자 선택" value={selected} onChange={e=>setSelected(e.target.value)} style={{padding:"11px 13px",minWidth:230,border:"1px solid #dce3ec",borderRadius:8}}>
     <option value="">소속 영업자 선택</option>{agents.map(a=><option key={a.id} value={a.id}>{a.name} ({a.id.slice(0,8)})</option>)}
    </select>
-   <button type="button" onClick={issue} disabled={!selected||busy} style={{padding:"11px 20px",border:0,borderRadius:8,background:"#bd2034",color:"white",fontWeight:700,opacity:!selected||busy?.6:1}}>{busy?"처리 중":"추천코드 발급"}</button>
+   <button type="button" onClick={issue} disabled={!selected||busy} style={{padding:"11px 20px",border:0,borderRadius:8,background:"#bd2034",color:"white",fontWeight:700,opacity:(!selected||busy)?0.6:1}}>{busy?"처리 중":"추천코드 발급"}</button>
   </div>
   {!agents.length&&<p style={{fontSize:13,color:"#64748b"}}>발급 가능한 소속 영업자가 없습니다. 먼저 영업자를 생성하거나 추천코드 발급 권한을 확인하세요.</p>}
  </section>
