@@ -15,3 +15,25 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 @media(min-width:761px){.gridMain{grid-template-columns:minmax(0,1.85fr) minmax(320px,.77fr)}.rightColumn{grid-column:auto;flex-direction:column}.rightColumn>.panel{flex:initial}}
 @media(min-width:761px) and (max-width:1100px){.gridMain{grid-template-columns:minmax(0,1.4fr) minmax(285px,.8fr)}.rightColumn{grid-column:auto;flex-direction:column}}
 @media(max-width:760px){.gridMain{display:flex;flex-direction:column}.rightColumn{width:100%;flex-direction:column}}
+
+
+/* Stock information panels */
+.bottomPanels>.panel{border:1px solid #dfe6f1;border-radius:14px;overflow:hidden;box-shadow:0 3px 18px rgba(27,48,83,.035);background:#fff}
+.bottomPanels .panelHeading{padding:17px 20px;border-bottom:1px solid #e9edf5;background:linear-gradient(100deg,#fff,#f8faff)}
+.bottomPanels .panelHeading strong{font-size:15px;color:#172338;letter-spacing:-.3px}
+.bottomPanels .tableWrap{overflow-x:auto;padding:11px 19px 18px;min-height:270px}
+.bottomPanels .tbl{min-width:400px;font-size:12px;font-variant-numeric:tabular-nums}
+.bottomPanels .tbl th{color:#64758f;font-size:11px;font-weight:700;padding:13px 8px;background:#f7f9fd;border-bottom:1px solid #e1e8f2}
+.bottomPanels .tbl td{padding:14px 8px;border-bottom:1px solid #ebeff6;color:#253c59;font-weight:600}
+.bottomPanels .tbl td:first-child{color:#8190a8;font-weight:500}
+.bottomPanels .tbl tbody tr:hover{background:#f8fbff}
+.bottomPanels .tbl td.up{color:#db3c55}
+.bottomPanels .tbl td.down{color:#356de1}
+.kmOrderModalBackdrop{position:fixed;inset:0;background:rgba(12,23,43,.52);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.kmOrderModal{width:min(100%,400px);padding:32px 26px 24px;text-align:center;background:#fff;border:1px solid #e1e6ef;border-radius:18px;box-shadow:0 24px 65px rgba(18,30,51,.22)}
+.kmOrderModalMark{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin:0 auto 18px;background:#eef3ff;color:#4168c6;font-size:24px;font-weight:750}
+.kmOrderModalMark.ok{background:#eaf7ef;color:#278853}
+.kmOrderModal h2{font-size:20px;color:#15243c;margin:0 0 11px}
+.kmOrderModal p{font-size:14px;line-height:1.7;color:#51647c;margin:0 0 24px;overflow-wrap:anywhere}
+.kmOrderModal button{width:100%;background:#bd2034;border:0;border-radius:10px;padding:13px;color:white;font-weight:700;cursor:pointer}
+.kmOrderModal button:focus-visible{outline:3px solid #a2b8f8;outline-offset:2px}
