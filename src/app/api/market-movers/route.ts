@@ -12,13 +12,13 @@ function mapKis(rows:KisRow[]):Mover[]{
  })).filter(x=>/^\d{6}$/.test(x.code)&&x.name.length>0&&x.price>0&&Number.isFinite(x.rate)&&Number.isFinite(x.tradingValue)).filter(x=>{if(seen.has(x.code))return false;seen.add(x.code);return true});
 }
 async function kisMovers(){
- const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"30",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"0",FID_INPUT_PRICE_2:"1000000",FID_VOL_CNT:"0",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0",FID_DIV_CLS_CODE:"0",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"};
- const fluct=(sort:string)=>kisMarketRequest("/uapi/domestic-stock/v1/ranking/fluctuation","FHPST01700000",{...common,FID_RANK_SORT_CLS_CODE:sort,FID_RSFL_RATE1:sort==="1"?"-30":"0",FID_RSFL_RATE2:sort==="1"?"0":"30"});
+ const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"10",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"0",FID_INPUT_PRICE_2:"1000000",FID_VOL_CNT:"0",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0",FID_DIV_CLS_CODE:"0",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"};
+ const fluct=(sort:string)=>kisMarketRequest("/uapi/domestic-stock/v1/ranking/fluctuation","FHPST01700000",{...common,FID_RANK_SORT_CLS_CODE:"0000",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"});
  const volume=kisMarketRequest("/uapi/domestic-stock/v1/quotations/volume-rank","FHPST01710000",{
  FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20171",FID_INPUT_ISCD:"0000",FID_DIV_CLS_CODE:"0",FID_BLNG_CLS_CODE:"3",
  FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0000000000",FID_INPUT_PRICE_1:"",FID_INPUT_PRICE_2:"",FID_VOL_CNT:"",FID_INPUT_DATE_1:""});
  // Rank API results are top lists only, not a complete market-wide advance/decline census.
- const [up,down,amount]=await Promise.allSettled([fluct("0"),fluct("1"),volume]);
+ const [up,down,amount]=await Promise.allSettled([fluct("0000"),fluct("0000"),volume]);
  const successful=(x:PromiseSettledResult<unknown>)=>x.status==="fulfilled"?(x.value as {output?:unknown}):null;
  const arr=(v:unknown)=>Array.isArray(v)?v as KisRow[]:[];
  const rising=mapKis(arr(successful(up)?.output)).filter(x=>x.rate>0).sort((a,b)=>b.rate-a.rate);
@@ -34,7 +34,7 @@ type Mover={code:string;name:string;market:string;price:number;change:number;rat
 export async function GET(){
  if(process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){
  try{return NextResponse.json(await kisMovers(),{headers:{"Cache-Control":"public, s-maxage=45, stale-while-revalidate=45"}})}
- catch(e){console.error("KIS_RANKING_UNAVAILABLE",e instanceof Error?e.message:"ERROR");return NextResponse.json({error:"KIS_RANKING_UNAVAILABLE",source:"KIS_RANKING",message:"KIS 순위 조회 실패. 최신 순위 데이터를 표시하지 않습니다.",detail:e instanceof Error?e.message:"ERROR"},{status:503})}
+ catch(e){console.error("KIS_RANKING_UNAVAILABLE",e instanceof Error?e.message:"ERROR");return NextResponse.json({error:"KIS_RANKING_UNAVAILABLE",source:"KIS_RANKING",message:"KIS 순위 조회 실패. 최신 순위 데이터를 표시하지 않습니다.",detail:"KIS_RANKING_TEMPORARILY_UNAVAILABLE"},{status:503})}
  }
  try{
   const res=await fetch("https://aikstockdata.com/data/public/quotes.json",{cache:"no-store",signal:AbortSignal.timeout(10500),headers:{Accept:"application/json"}});
