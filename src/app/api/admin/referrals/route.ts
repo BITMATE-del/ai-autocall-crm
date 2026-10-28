@@ -15,12 +15,10 @@ export async function POST(req:Request){
  if(!org||org.status!=="ACTIVE"||org.type==="HQ"){await c.query("ROLLBACK");return fail("INVALID_ORGANIZATION",403)}
  if(a.role==="SUB_HQ"&&id!==a.org&&!(org.type==="AGENT"&&org.parent_id===a.org)){await c.query("ROLLBACK");return fail("OUT_OF_SCOPE",403)}
  if(a.role==="AGENT"&&id!==a.org){await c.query("ROLLBACK");return fail("OUT_OF_SCOPE",403)}
- const owner=org.type==="AGENT"?(await c.query("SELECT user_id FROM km_organization_members WHERE organization_id=$1 AND status='ACTIVE' LIMIT 1",[id])).rows[0]?.user_id:null;
- if(org.type==="AGENT"&&!owner){await c.query("ROLLBACK");return fail("AGENT_NOT_ALLOWED",403)}
- // Existing schema has agent_id NOT NULL; additive organization-direct code support.
- await c.query("ALTER TABLE km_referral_codes ALTER COLUMN agent_id DROP NOT NULL");
+ const owner=(await c.query("SELECT user_id FROM km_organization_members WHERE organization_id=$1 AND status='ACTIVE' LIMIT 1",[id])).rows[0]?.user_id;
+ if(!owner){await c.query("ROLLBACK");return fail("AGENT_NOT_ALLOWED",403)}
  const code="HF"+randomBytes(6).toString("hex").toUpperCase();
- await c.query("INSERT INTO km_referral_codes(code,agent_id,organization_id) VALUES($1,$2,$3)",[code,owner||null,id]);
+ await c.query("INSERT INTO km_referral_codes(code,agent_id,organization_id) VALUES($1,$2,$3)",[code,owner,id]);
  await c.query("INSERT INTO km_management_audit_logs(actor_id,target_id,action,after_data) VALUES($1,$2,'REFERRAL_ISSUED',$3::jsonb)",[a.id,id,JSON.stringify({code,organizationId:id})]);
  await c.query("COMMIT");return NextResponse.json({code},{status:201})
  }catch(e){await c.query("ROLLBACK");console.error("REFERRAL_ISSUE_FAILED",e instanceof Error?e.message:e);return fail("ISSUE_FAILED",503)}finally{c.release()}
