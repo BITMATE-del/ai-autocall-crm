@@ -1,6 +1,12 @@
 import {kisMarketRequest} from "@/lib/kis-stock-quote";
 const n=(v:unknown)=>Number(String(v??"").replace(/,/g,""));
 type KisRow=Record<string,string>;
+function isOrdinaryShare(x:Mover){
+ const name=x.name.trim().toUpperCase();
+ if(/^(?:KODEX|TIGER|RISE|ACE\s|SOL\s|PLUS\s|HANARO|KOSEF|KIWOOM|ARIRANG|KINDEX|TIMEFOLIO|FOCUS|WON\s|1Q\s|BNK\s|WOORI\s|TREX|마이티|마이다스|파워|히어로즈|에셋플러스|QV\s|TRUE\s)/i.test(name))return false;
+ if(/(?:ETF|ETN|ETP|인버스|레버리지|선물|스팩|SPAC|리츠|REIT)/i.test(name))return false;
+ return true;
+}
 function mapKis(rows:KisRow[]):Mover[]{
  const seen=new Set<string>();
  return rows.map(x=>({
@@ -9,13 +15,13 @@ function mapKis(rows:KisRow[]):Mover[]{
  market:"KRX",
  price:n(x.stck_prpr),change:n(x.prdy_vrss),rate:n(x.prdy_ctrt),
  tradingValue:n(x.acml_tr_pbmn||x.acml_tr_prc||x.acml_tr_amt||"0")
- })).filter(x=>/^\d{6}$/.test(x.code)&&x.name.length>0&&x.price>0&&Number.isFinite(x.rate)&&Number.isFinite(x.tradingValue)).filter(x=>{if(seen.has(x.code))return false;seen.add(x.code);return true});
+ })).filter(x=>/^\d{6}$/.test(x.code)&&x.name.length>0&&x.price>0&&Number.isFinite(x.rate)&&Number.isFinite(x.tradingValue)&&isOrdinaryShare(x)).filter(x=>{if(seen.has(x.code))return false;seen.add(x.code);return true});
 }
 async function kisMovers(){
- const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"10",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"0",FID_INPUT_PRICE_2:"1000000",FID_VOL_CNT:"0",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0",FID_DIV_CLS_CODE:"0",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"};
+ const common={FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20170",FID_INPUT_ISCD:"0000",FID_INPUT_CNT_1:"10",FID_PRC_CLS_CODE:"0",FID_INPUT_PRICE_1:"0",FID_INPUT_PRICE_2:"1000000",FID_VOL_CNT:"0",FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0000000000",FID_DIV_CLS_CODE:"1",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"};
  const fluct=(sort:string)=>kisMarketRequest("/uapi/domestic-stock/v1/ranking/fluctuation","FHPST01700000",{...common,FID_RANK_SORT_CLS_CODE:"0000",FID_RSFL_RATE1:"-30",FID_RSFL_RATE2:"30"});
  const volume=kisMarketRequest("/uapi/domestic-stock/v1/quotations/volume-rank","FHPST01710000",{
- FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20171",FID_INPUT_ISCD:"0000",FID_DIV_CLS_CODE:"0",FID_BLNG_CLS_CODE:"3",
+ FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20171",FID_INPUT_ISCD:"0000",FID_DIV_CLS_CODE:"1",FID_BLNG_CLS_CODE:"3",
  FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0000000000",FID_INPUT_PRICE_1:"",FID_INPUT_PRICE_2:"",FID_VOL_CNT:"",FID_INPUT_DATE_1:""});
  // Rank API results are top lists only, not a complete market-wide advance/decline census.
  const [up,amount]=await Promise.allSettled([fluct("0000"),volume]);
