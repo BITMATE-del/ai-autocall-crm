@@ -1,10 +1,11 @@
-export type KrQuote={symbol:string;price:number;previousClose:number;asOf:string;provider:"NAVER_UNOFFICIAL"|"KIS_REST";marketStatus:string};
+export type KrQuote={symbol:string;price:number;previousClose:number;asOf:string;provider:"NAVER_UNOFFICIAL"|"KIS_REST";marketStatus:string;fallbackReason?:string};
 export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQuote>{
  if(!/^\d{6}$/.test(symbol))throw Error("INVALID_SYMBOL");
+ let fallbackReason:string|undefined;
  // Opt-in for read-only display quotes. Keep existing trusted trade pricing unchanged.
  if(!forTrade&&process.env.KM_STOCK_QUOTE_PROVIDER==="KIS"){
   try{const {getKisStockQuote}=await import("@/lib/kis-stock-quote");return await getKisStockQuote(symbol)}
-  catch(e){console.warn("KIS_DISPLAY_QUOTE_FALLBACK",e instanceof Error?e.message:"KIS_ERROR")}
+  catch(e){fallbackReason=e instanceof Error?e.message:"KIS_ERROR";console.warn("KIS_DISPLAY_QUOTE_FALLBACK",fallbackReason)}
  }
 
  if(forTrade&&process.env.KM_STOCK_INTERNAL_TRADING_ENABLED!=="true")throw Error("STOCK_TRADING_NOT_CONFIGURED");
@@ -43,5 +44,5 @@ export async function getKrStockQuote(symbol:string,forTrade=false):Promise<KrQu
   if(!marketOpen)throw Error("MARKET_NOT_TRADABLE");
   if(!asOf||ts>now+5000||now-ts>60000)throw Error("QUOTE_STALE");
  }
- return {symbol,price,previousClose,asOf:asOf||new Date().toISOString(),provider:"NAVER_UNOFFICIAL",marketStatus:marketOpen?"REGULAR_SESSION":"CLOSED"};
+ return {symbol,price,previousClose,asOf:asOf||new Date().toISOString(),provider:"NAVER_UNOFFICIAL",marketStatus:marketOpen?"REGULAR_SESSION":"CLOSED",fallbackReason};
 }
