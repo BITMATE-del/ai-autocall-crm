@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import {useEffect,useState} from "react";
+function StockLogo({code,name}:{code:string;name:string}){const [failed,setFailed]=useState(false);return <span style={{height:32,width:32,flex:"0 0 32px",borderRadius:"50%",background:"#f2f5fa",border:"1px solid #e2e7ef",display:"grid",placeItems:"center",overflow:"hidden",color:"#506582",fontWeight:800,fontSize:11}}>{!failed?<img src={"https://ssl.pstatic.net/imgstock/fn/real/logo/png/stock/Stock"+code+".png"} alt={name+" 심볼"} width={32} height={32} style={{objectFit:"contain"}} onError={()=>setFailed(true)}/>:<span>{name.trim().slice(0,2)}</span>}</span>;}
 type Item={code:string;name:string;price:number;rate:number;tradingValue:number};
 type Data={source:string;asOfTime?:string;rising:Item[];falling:Item[];active:Item[];note?:string};
 const fmt=(v:number)=>v.toLocaleString("ko-KR");
@@ -22,7 +23,7 @@ export default function StockMovers(){
  {sections.map(([title,key,color])=><div key={key} style={{border:"1px solid #e2e9f3",borderRadius:12,padding:15,background:"#fff"}}>
  <h3 style={{margin:"0 0 10px",fontSize:17,color}}>{title}</h3><div style={{height:4,background:color,borderRadius:4,opacity:.8,marginBottom:9}}/>
  {(data?.[key]||[]).slice(0,3).map((x,i)=><Link key={x.code} href="/" style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",textDecoration:"none",borderBottom:"1px solid #edf0f6",color:"#172338"}}>
- <span style={{width:18,color:"#94a3b8",fontWeight:700}}>{i+1}</span>
+ <span style={{width:18,color:"#94a3b8",fontWeight:700}}>{i+1}</span><StockLogo code={x.code} name={x.name}/>
  <div style={{flex:1,minWidth:0}}><strong style={{fontSize:13,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.name}</strong><span style={{fontSize:11,color:"#8491a4"}}>{x.code}</span></div>
  <div style={{textAlign:"right",fontSize:12}}><strong style={{display:"block"}}>{fmt(x.price)}원</strong><span style={{color:x.rate>=0?"#d63b53":"#356de1"}}>{x.rate>0?"+":""}{x.rate.toFixed(2)}%</span></div>
  </Link>)}
