@@ -18,13 +18,15 @@ async function kisMovers(){
  FID_COND_MRKT_DIV_CODE:"J",FID_COND_SCR_DIV_CODE:"20171",FID_INPUT_ISCD:"0000",FID_DIV_CLS_CODE:"0",FID_BLNG_CLS_CODE:"3",
  FID_TRGT_CLS_CODE:"0",FID_TRGT_EXLS_CLS_CODE:"0000000000",FID_INPUT_PRICE_1:"",FID_INPUT_PRICE_2:"",FID_VOL_CNT:"",FID_INPUT_DATE_1:""});
  // Rank API results are top lists only, not a complete market-wide advance/decline census.
- const [up,down,amount]=await Promise.allSettled([fluct("0000"),fluct("0000"),volume]);
+ const [up,amount]=await Promise.allSettled([fluct("0000"),volume]);
  const successful=(x:PromiseSettledResult<unknown>)=>x.status==="fulfilled"?(x.value as {output?:unknown}):null;
  const arr=(v:unknown)=>Array.isArray(v)?v as KisRow[]:[];
- const rising=mapKis(arr(successful(up)?.output)).filter(x=>x.rate>0).sort((a,b)=>b.rate-a.rate);
- const falling=mapKis(arr(successful(down)?.output)).filter(x=>x.rate<0).sort((a,b)=>a.rate-b.rate);
+ const rankRows=mapKis(arr(successful(up)?.output));
  const active=mapKis(arr(successful(amount)?.output)).sort((a,b)=>b.tradingValue-a.tradingValue);
- if(!rising.length&&!falling.length&&!active.length){const reasons=[up,down,amount].filter(x=>x.status==="rejected").map(x=>x.status==="rejected"&&x.reason instanceof Error?x.reason.message:"NO_ROWS").join(",");throw Error("KIS_RANKING_EMPTY_"+reasons)}
+ const combined=[...new Map([...rankRows,...active].map(x=>[x.code,x])).values()];
+ const rising=combined.filter(x=>x.rate>0).sort((a,b)=>b.rate-a.rate);
+ const falling=combined.filter(x=>x.rate<0).sort((a,b)=>a.rate-b.rate);
+ if(!rising.length&&!falling.length&&!active.length){const reasons=[up,amount].filter(x=>x.status==="rejected").map(x=>x.status==="rejected"&&x.reason instanceof Error?x.reason.message:"NO_ROWS").join(",");throw Error("KIS_RANKING_EMPTY_"+reasons)}
  const kst=new Date(Date.now()+32400000).toISOString();
  return {asOf:kst.slice(0,10).replace(/-/g,""),asOfTime:new Date().toISOString(),count:null,up:null,down:null,flat:null,rising,falling,active,source:"KIS_RANKING",note:"KIS 순위 API 상위 종목 결과. 전체 시장 종목 수·상승/하락 종목 수는 별도로 제공되지 않습니다."};
 }
