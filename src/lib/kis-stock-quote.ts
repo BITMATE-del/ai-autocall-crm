@@ -23,7 +23,7 @@ export async function kisAccessToken(){
   if(row?.token_cipher&&Date.parse(row.expires_at)>Date.now()+120000){
    const value=decrypt(row.token_cipher);tokenCache={value,expires:Date.parse(row.expires_at)-60000};await c.query("COMMIT");return value;
   }
-  if(row?.last_attempt_at&&Date.now()-Date.parse(row.last_attempt_at)<65000){await c.query("COMMIT");throw Error("KIS_AUTH_RATE_LIMIT_WAIT")}
+  if(row?.last_attempt_at&&Date.now()-Date.parse(row.last_attempt_at)<65000){const last=String(row.last_error||"UNKNOWN").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,50);await c.query("COMMIT");throw Error("KIS_AUTH_RATE_LIMIT_WAIT_"+last)}
   await c.query("INSERT INTO km_kis_auth_cache(id,last_attempt_at) VALUES('production',NOW()) ON CONFLICT(id) DO UPDATE SET last_attempt_at=NOW()");
   const r=await fetch(host+"/oauth2/tokenP",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({grant_type:"client_credentials",appkey:key,appsecret:secret}),signal:AbortSignal.timeout(9000),cache:"no-store"});
   const json=await r.json().catch(()=>({}));
