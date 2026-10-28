@@ -1,0 +1,34 @@
+"use client";
+import Link from "next/link";
+import {useEffect,useState} from "react";
+type Item={code:string;name:string;price:number;rate:number;tradingValue:number};
+type Data={source:string;asOfTime?:string;rising:Item[];falling:Item[];active:Item[];note?:string};
+const fmt=(v:number)=>v.toLocaleString("ko-KR");
+export default function StockMovers(){
+ const [data,setData]=useState<Data|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+ async function load(){setBusy(true);try{
+ const r=await fetch("/api/market-movers",{cache:"no-store"}),j=await r.json().catch(()=>null);
+ if(!r.ok||!j?.rising)throw Error("시세 순위를 불러올 수 없습니다.");
+ setData(j);setError("");
+ }catch(e){setError(e instanceof Error?e.message:"조회 실패");setData(null)}finally{setBusy(false)}}
+ useEffect(()=>{void load();const id=setInterval(()=>void load(),120000);return()=>clearInterval(id)},[]);
+ const sections:[string,keyof Pick<Data,"rising"|"falling"|"active">,string][]=[["상승률 상위","rising","#d63b53"],["하락률 상위","falling","#356de1"],["거래대금 상위","active","#647fbe"]];
+ return <section className="kmHSection" style={{marginTop:20}}>
+ <div className="kmHSectionTitle" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+ <div><span style={{fontSize:11,fontWeight:800,color:"#5879ba",letterSpacing:1}}>STOCK MOVERS</span><h2>국내주식 등락 랭킹</h2><p>{data?.source==="KIS_RANKING"?"한국투자증권 KIS 순위 · KRX 기준":data?"일별 시장 데이터 기준":"KIS 시장 순위 조회 중"}{data?.asOfTime&&" · "+new Date(data.asOfTime).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})+" 조회"}</p></div>
+ <button disabled={busy} onClick={()=>void load()} style={{border:"1px solid #dce3ec",background:"#fff",padding:"9px 14px",borderRadius:8,cursor:"pointer"}}>{busy?"새로고침 중":"새로고침"}</button>
+ </div>
+ {error&&<p role="alert" style={{color:"#bf2032",padding:14}}>{error} 이전 날짜 순위는 표시하지 않습니다.</p>}
+ <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(245px,1fr))",gap:12,marginTop:17}}>
+ {sections.map(([title,key,color])=><div key={key} style={{border:"1px solid #e2e9f3",borderRadius:12,padding:15,background:"#fff"}}>
+ <h3 style={{margin:"0 0 10px",fontSize:17,color}}>{title}</h3><div style={{height:4,background:color,borderRadius:4,opacity:.8,marginBottom:9}}/>
+ {(data?.[key]||[]).slice(0,3).map((x,i)=><Link key={x.code} href="/" style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",textDecoration:"none",borderBottom:"1px solid #edf0f6",color:"#172338"}}>
+ <span style={{width:18,color:"#94a3b8",fontWeight:700}}>{i+1}</span>
+ <div style={{flex:1,minWidth:0}}><strong style={{fontSize:13,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.name}</strong><span style={{fontSize:11,color:"#8491a4"}}>{x.code}</span></div>
+ <div style={{textAlign:"right",fontSize:12}}><strong style={{display:"block"}}>{fmt(x.price)}원</strong><span style={{color:x.rate>=0?"#d63b53":"#356de1"}}>{x.rate>0?"+":""}{x.rate.toFixed(2)}%</span></div>
+ </Link>)}
+ {!data?.[key]?.length&&<p style={{fontSize:12,color:"#8290a4"}}>{busy?"조회 중":"순위 정보 없음"}</p>}</div>)}
+ </div>
+ {data?.note&&<p style={{fontSize:11,color:"#8290a4",marginTop:12}}>{data.note}</p>}
+ </section>
+}
