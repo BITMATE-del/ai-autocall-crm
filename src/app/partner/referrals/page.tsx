@@ -7,16 +7,16 @@ export default function Referrals(){
  const [codes,setCodes]=useState<Code[]>([]),[agents,setAgents]=useState<Org[]>([]),[selected,setSelected]=useState(""),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  async function load(){try{
   const [cr,ar]=await Promise.all([fetch("/api/admin/referrals",{cache:"no-store"}),fetch("/api/admin/organizations",{cache:"no-store"})]);
-  const cj=await cr.json(),aj=await ar.json();if(!cr.ok)throw Error(cj.error||"추천코드 조회 실패");
+  const cj=await cr.json().catch(()=>null),aj=await ar.json().catch(()=>null);if(!cr.ok||!cj)throw Error(cj?.error||"추천코드 조회 서버 응답 오류 ("+cr.status+")");
   setCodes(cj.codes||[]);
-  if(ar.ok)setAgents((aj.organizations||[]).filter((x:Org)=>x.type==="AGENT"&&x.status==="ACTIVE"&&x.user_id));
+  if(ar.ok&&aj)setAgents((aj.organizations||[]).filter((x:Org)=>x.type==="AGENT"&&x.status==="ACTIVE"&&x.user_id));
   else setAgents([]);
  }catch(e){setError(e instanceof Error?e.message:"조회 실패")}}
  useEffect(()=>{void load()},[]);
  async function issue(){const org=agents.find(x=>x.id===selected);if(busy)return;
   setBusy(true);setError("");setMessage("");
   try{const r=await fetch("/api/admin/referrals",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({organizationId:org?.id||null})});
-   const j=await r.json();if(!r.ok)throw Error(j.error||"발급 실패");
+   const j=await r.json().catch(()=>null);if(!r.ok||!j)throw Error(j?.error||"추천코드 발급 서버 응답 오류 ("+r.status+")");
    setMessage("추천코드 "+j.code+" 발급 완료");await load();
   }catch(e){setError(e instanceof Error?e.message:"발급 실패")}finally{setBusy(false)}
  }
