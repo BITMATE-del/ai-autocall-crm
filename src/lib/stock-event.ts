@@ -12,6 +12,8 @@ export async function ensureStockEventSchema(){
  granted_by UUID NOT NULL REFERENCES km_users(id),granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  UNIQUE(event_key,user_id,symbol))`);
  await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS notify_member BOOLEAN NOT NULL DEFAULT TRUE");
+ await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS notification_title TEXT");
+ await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS notification_body TEXT");
  await database().query("ALTER TABLE km_stock_event_grants ADD COLUMN IF NOT EXISTS unit_cost_krw BIGINT NOT NULL DEFAULT 0");
  await database().query(`CREATE TABLE IF NOT EXISTS km_stock_event_movements(
  id UUID PRIMARY KEY,grant_id UUID NOT NULL REFERENCES km_stock_event_grants(id),user_id UUID NOT NULL REFERENCES km_users(id),
