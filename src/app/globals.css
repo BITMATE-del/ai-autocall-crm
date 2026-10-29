@@ -167,3 +167,13 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .gridMain.hasStockOrderbook .stockBottomPanels{grid-template-columns:repeat(2,minmax(0,1fr))}
 .gridMain.hasStockOrderbook .hfmOrderbook.hfmOrderbookEmpty{min-height:0;height:auto}
 @media(max-width:760px){.stockAssetRow .portfolio{grid-template-columns:minmax(0,1fr);gap:10px;padding:15px}.gridMain.hasStockOrderbook .stockBottomPanels{grid-template-columns:minmax(0,1fr)}}
+
+/* Correct compact horizontal assets, no inherited tall portfolio */
+.stockAssetRow .portfolio{min-height:0!important;display:grid;grid-template-columns:minmax(220px,1.1fr) minmax(0,1fr);align-items:center;gap:20px;padding:16px 22px}
+.stockAssetRow .portfolioStat{margin:0;padding:0;border:0;align-items:center}
+.stockAssetRow .balance{align-items:center}
+.stockAssetRow .balance h2{font-size:24px;margin:4px 0 0}
+.stockBottomArea{margin-top:12px}
+.stockBottomArea .stockBottomPanels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stockBottomArea .stockBottomPanels .tbl{font-size:12px}
+@media(max-width:760px){.stockAssetRow .portfolio{grid-template-columns:minmax(0,1fr);gap:12px;padding:15px}.stockBottomArea .stockBottomPanels{grid-template-columns:minmax(0,1fr)}}
