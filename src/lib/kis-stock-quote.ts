@@ -83,8 +83,8 @@ export async function getKisTradeQuote(symbol:string):Promise<KrQuote>{
  const body=await kisMarketRequest("/uapi/domestic-stock/v1/quotations/inquire-ccnl","FHKST01010300",{FID_COND_MRKT_DIV_CODE:"J",FID_INPUT_ISCD:symbol});
  const item=(body as unknown as {output?:Record<string,string>[]}).output?.[0];
  const hour=String(item?.stck_cntg_hour||"");
- const price=Number(item?.stck_pbpr??item?.stck_prpr);
- if(!/^\\d{6}$/.test(hour)||!Number.isSafeInteger(price)||price<=0)throw Error("KIS_EXECUTION_INVALID");
+ const price=Number(item?.stck_prpr??item?.stck_pbpr);
+ if(!/^\d{6}$/.test(hour)||!Number.isSafeInteger(price)||price<=0)throw Error("KIS_EXECUTION_INVALID");
  const previousClose=(await getKisStockQuote(symbol)).previousClose;
  const date=kst.toISOString().slice(0,10);
  const asOfDate=new Date(date+"T"+hour.slice(0,2)+":"+hour.slice(2,4)+":"+hour.slice(4,6)+"+09:00");
