@@ -20,6 +20,7 @@ export async function POST(req:Request){
    const parent=(await client.query("SELECT type FROM km_organizations WHERE id=$1",[org.parent_id])).rows[0];
    if(parent?.type==="SUB_HQ"){const allowed=await grantsFor(org.parent_id);keys=keys.filter(key=>allowed.some(g=>g.key===key&&g.canDelegate));}
   }
+  await client.query("INSERT INTO km_org_permissions(key,allowed_roles,delegable,risk_level) SELECT unnest($1::text[]),ARRAY['SUB_HQ','AGENT']::text[],TRUE,'MEDIUM' ON CONFLICT(key) DO NOTHING",[["FUNDING_APPROVE","MEMBER_BALANCE_ADJUST"]]);
   for(const key of keys){
    const delegate=org.type==="SUB_HQ"&&AGENT_PERMISSIONS.has(key);
    const previous=(await client.query("SELECT granted_status,can_delegate FROM km_permission_grants WHERE subject_id=$1 AND permission_key=$2",[id,key])).rows[0]||null;
