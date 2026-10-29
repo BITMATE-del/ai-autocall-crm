@@ -115,3 +115,30 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .hfmOrderbookStatus{color:#8090a7;font-size:12px;padding:24px 8px;text-align:center}
 @media(max-width:1199px){.gridMain.hasStockOrderbook{grid-template-columns:minmax(0,1fr) minmax(225px,.65fr)}.gridMain.hasStockOrderbook>.leftColumn{grid-column:1}.gridMain.hasStockOrderbook>.middleColumn{grid-column:2}.gridMain.hasStockOrderbook>.rightColumn{grid-column:1/-1}}
 @media(max-width:760px){.gridMain.hasStockOrderbook{display:flex;flex-direction:column}.gridMain.hasStockOrderbook>.leftColumn,.gridMain.hasStockOrderbook>.middleColumn,.gridMain.hasStockOrderbook>.rightColumn{width:100%}.hfmOrderbookLevel{min-height:32px;font-size:12px}.hfmOrderbookBody{padding:12px 15px}}
+
+
+/* Stock workspace density: align chart, orderbook and order/asset cards. */
+@media(min-width:1200px){
+ .gridMain.hasStockOrderbook{grid-template-columns:minmax(0,1.52fr) minmax(230px,.60fr) minmax(300px,.92fr)}
+}
+.gridMain.hasStockOrderbook .hfmOrderbook{display:flex;flex-direction:column;height:585px;min-height:0}
+.gridMain.hasStockOrderbook .hfmOrderbookBody{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.gridMain.hasStockOrderbook .hfmOrderbookLabels{position:sticky;top:0;z-index:3;background:#fff}
+.gridMain.hasStockOrderbook .rightColumn>.panel{flex-shrink:0}
+.gridMain.hasStockOrderbook .rightColumn .portfolio{padding-bottom:14px}
+.stockBottomArea{margin-top:13px;min-width:0}
+.stockBottomPanels{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stockBottomPanels>.panel{min-width:0}
+.stockBottomPanels .tableWrap{min-width:0;max-width:100%;min-height:0;overflow-x:auto;padding:10px 13px}
+.stockBottomPanels .tbl{table-layout:fixed;width:100%;min-width:0;font-size:11px}
+.stockBottomPanels .tbl th,.stockBottomPanels .tbl td{padding:10px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.stockBottomPanels .tbl th:first-child,.stockBottomPanels .tbl td:first-child{width:18%}
+@media(max-width:1199px) and (min-width:761px){
+ .gridMain.hasStockOrderbook .hfmOrderbook{height:585px}
+}
+@media(max-width:760px){
+ .gridMain.hasStockOrderbook .hfmOrderbook{height:440px}
+ .stockBottomPanels{grid-template-columns:minmax(0,1fr)}
+ .stockBottomPanels .tableWrap{overflow-x:auto}
+ .stockBottomPanels .tbl{min-width:390px}
+}
