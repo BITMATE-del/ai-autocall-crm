@@ -78,3 +78,18 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
  input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:max(16px,1em)}
 }
 @media(max-width:400px){.kmOrderModal h2{font-size:18px}.bottomPanels .tbl td,.bottomPanels .tbl th{padding-left:7px;padding-right:7px}}
+
+
+/* HFM stock information: compact, readable grouped data */
+.kmStockInfo{display:grid;gap:20px;color:#172b52}
+.kmStockInfoTitle{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:2px 0 12px;border-bottom:1px solid #e9edf3}
+.kmStockInfoTitle>div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.kmStockInfoTitle strong{font-size:19px;font-weight:800}
+.kmStockInfoTitle span,.kmStockInfoTitle small{color:#8190a5;font-size:12px}
+.kmStockInfoSection h3{font-size:13px;font-weight:800;margin:0 0 10px;color:#172b52}
+.kmStockInfoGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #e9edf3;border-radius:11px;overflow:hidden;background:#fff}
+.kmStockInfoMetric{min-width:0;padding:15px 18px;display:flex;flex-direction:column;gap:8px;border-right:1px solid #e9edf3;border-bottom:1px solid #e9edf3}
+.kmStockInfoMetric span{font-size:11px;color:#8290a3}
+.kmStockInfoMetric strong{font-size:15px;line-height:1.4;color:#172b52;font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-width:950px){.kmStockInfoGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.kmStockInfoGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.kmStockInfoMetric{padding:12px 11px}.kmStockInfoMetric strong{font-size:13px}.kmStockInfoTitle strong{font-size:17px}}
