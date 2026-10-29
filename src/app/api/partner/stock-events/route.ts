@@ -12,8 +12,8 @@ export async function GET(req:Request){
  try{await ensureStockEventSchema();const q=(new URL(req.url).searchParams.get("q")||"").slice(0,80);
  const actor=await actorFor(u.id);if(!actor?.org)return error("FORBIDDEN",403);
  const [members,grants]=await Promise.all([
- database().query("SELECT id,username,email FROM km_users WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=km_users.id AND (ma.organization_id=$2 OR ($3='SUB_HQ' AND ma.sub_hq_id=$2))) AND ($1='' OR username ILIKE '%'||$1||'%' OR email ILIKE '%'||$1||'%' OR id::text ILIKE '%'||$1||'%' ORDER BY username LIMIT 70",[q,actor.org,actor.role]),
- database().query("SELECT g.id,g.event_key,g.event_name,g.symbol,g.granted_qty,g.available_qty,g.asset_type,g.notify_member,g.unit_cost_krw,g.granted_at,g.user_id,u.username FROM km_stock_event_grants g JOIN km_users u ON u.id=g.user_id WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=g.user_id AND (ma.organization_id=$1 OR ($2=\'SUB_HQ\' AND ma.sub_hq_id=$1))) ORDER BY g.granted_at DESC LIMIT 100",[actor.org,actor.role])]);
+ database().query("SELECT id,username,email FROM km_users WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=km_users.id AND (ma.organization_id=$2 OR ($3='SUB_HQ' AND ma.sub_hq_id=$2))) AND ($1='' OR username ILIKE '%'||$1||'%' OR email ILIKE '%'||$1||'%' OR id::text ILIKE '%'||$1||'%') ORDER BY username LIMIT 70",[q,actor.org,actor.role]),
+ database().query("SELECT g.id,g.event_key,g.event_name,g.symbol,g.granted_qty,g.available_qty,g.asset_type,g.notify_member,g.unit_cost_krw,g.granted_at,g.user_id,u.username FROM km_stock_event_grants g JOIN km_users u ON u.id=g.user_id WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=g.user_id AND (ma.organization_id=$1 OR ($2='SUB_HQ' AND ma.sub_hq_id=$1))) ORDER BY g.granted_at DESC LIMIT 100",[actor.org,actor.role])]);
  return NextResponse.json({members:members.rows,grants:grants.rows},{headers:{"Cache-Control":"no-store"}})
  }catch(e){console.error("STOCK_EVENT_LIST_FAILED",e);return error("EVENT_LIST_UNAVAILABLE",503)}
 }
