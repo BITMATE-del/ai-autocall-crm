@@ -10,7 +10,7 @@ export default function StockOrderbook({symbol}:{symbol:string}){
  void load();const timer=setInterval(()=>{if(document.visibilityState==="visible")void load()},15000);
  return()=>{active=false;controller?.abort();clearInterval(timer)}},[symbol]);
  const max=Math.max(1,...(book?.asks||[]).map(v=>v.qty),...(book?.bids||[]).map(v=>v.qty));
- return <section className="panel hfmOrderbook" aria-label="국내주식 호가창">
+ return <section className={"panel hfmOrderbook "+(!book?"hfmOrderbookEmpty":"")} aria-label="국내주식 호가창">
  <div className="panelHeading"><strong>호가창</strong><span className="hfmOrderbookMarket">KIS · KRX</span></div>
  <div className="hfmOrderbookBody"><div className="hfmOrderbookLabels"><span>잔량</span><span>호가</span></div>
  {loading&&!book&&<p className="hfmOrderbookStatus">호가를 조회하고 있습니다.</p>}
