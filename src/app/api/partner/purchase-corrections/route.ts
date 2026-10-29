@@ -21,7 +21,7 @@ export async function GET(req:Request){
  (SELECT COUNT(*)::int FROM km_stock_internal_orders z WHERE z.user_id=p.user_id AND z.symbol=p.symbol AND z.side='BUY') AS buy_count
  FROM km_stock_positions p JOIN km_users u ON u.id=p.user_id WHERE p.qty>0 AND EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=p.user_id AND (ma.organization_id=$2 OR ($3='SUB_HQ' AND ma.sub_hq_id=$2)))
  AND ($1='' OR u.email ILIKE '%'||$1||'%' OR u.username ILIKE '%'||$1||'%' OR u.id::text ILIKE '%'||$1||'%' OR p.symbol ILIKE '%'||$1||'%')
- ORDER BY u.username,p.symbol LIMIT 100`,[q]);
+ ORDER BY u.username,p.symbol LIMIT 100`,[q,actor.org,actor.role]);
  return NextResponse.json({rows:rows.rows.map(r=>({...r,id:r.id||r.user_id+":"+r.symbol,status:r.status||"HELD",correctionAllowed:kind==="CFD"&&r.original_requested!=null&&Number(r.original_requested)!==Number(r.amount)&&Number(r.stake_delta)===-Number(r.amount)&&r.stake_count===1})),kind},{headers:{"Cache-Control":"no-store"}});
  }catch(e){console.error("PURCHASE_CORRECTION_LIST_ERROR",e);return err("CORRECTION_LIST_UNAVAILABLE",503)}
 }
