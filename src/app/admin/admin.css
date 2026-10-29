@@ -3,3 +3,9 @@
 
 /* HFM KOREA administrator sidebar brand image only */
 .am-logo .am-brand-image{display:block;width:174px;height:61px;max-width:calc(100% - 8px);object-fit:contain;object-position:left center;flex-shrink:1}
+
+
+/* HQ admin mobile containment and touch ergonomics */
+.am-root,.am-content,.am-main{min-width:0}.am-main{max-width:100%}.am-root input,.am-root select,.am-root textarea{max-width:100%}
+@media(max-width:800px){.am-sidebar{width:min(84vw,300px);height:100dvh;overflow-y:auto;overscroll-behavior:contain}.am-main{padding:17px 12px 36px}.am-topbar{min-width:0;padding:0 12px}.am-heading{flex-wrap:wrap;gap:12px}.am-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.am-table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.am-table th,.am-table td{padding:12px 10px}.am-root button,.am-root a{touch-action:manipulation}}
+@media(max-width:480px){.am-main{padding:12px 10px 28px}.am-grid{gap:8px}.am-stat{min-width:0;padding:12px}.am-stat strong{font-size:21px}.am-heading h1{font-size:21px}.am-root input:not([type=checkbox]):not([type=radio]),.am-root select,.am-root textarea{font-size:16px}.am-ticket{padding:13px}.am-search{width:100%}}
