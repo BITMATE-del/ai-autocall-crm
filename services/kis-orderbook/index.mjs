@@ -25,7 +25,7 @@ async function reconcile(){
 }
 async function parseFrame(raw){
  const parts=raw.split("|");if(parts.length<4||parts[0]!=="0"||parts[1]!=="H0STASP0")return;
- const fields=parts[3].split("^"),symbol=fields[0];if(!safe(symbol)||fields.length<43)return;
+ const fields=parts[3].split("^"),symbol=fields[0];if(!safe(symbol)||fields.length<45)return;
  // KIS H0STASP0: symbol,time,ask1..10,bid1..10,askQty1..10,bidQty1..10
  const levels=(priceStart,qtyStart)=>Array.from({length:10},(_,i)=>({price:num(fields[priceStart+i]),qty:num(fields[qtyStart+i])})).filter(v=>v.price>0&&v.qty!==null);
  const asks=levels(3,23),bids=levels(13,33);
