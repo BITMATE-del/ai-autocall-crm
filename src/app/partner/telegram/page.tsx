@@ -31,7 +31,7 @@ export default function Page(){
   <p style={{fontSize:14,color:"#475569"}}>{state===null?"연결 확인 중":state.connected?"연결된 채팅 "+state.count+"개":"연결된 텔레그램 채팅이 없습니다."}</p>
   <div style={{display:"flex",flexWrap:"wrap",gap:9}}>
    <button type="button" disabled={busy} onClick={check} style={{padding:"10px 13px",borderRadius:8,border:"1px solid #cbd5e1",background:"#fff",cursor:"pointer"}}>연결 상태 확인</button>
-   <button type="button" disabled={busy||!state?.connected} onClick={test} style={{padding:"10px 13px",borderRadius:8,border:0,background:"#bf2032",color:"#fff",cursor:"pointer",opacity:busy||!state?.connected?.6:1}}>테스트 알림 보내기</button>
+   <button type="button" disabled={busy||!state?.connected} onClick={test} style={{padding:"10px 13px",borderRadius:8,border:0,background:"#bf2032",color:"#fff",cursor:"pointer",opacity:(busy||!state?.connected)?0.6:1}}>테스트 알림 보내기</button>
   </div>
   {message&&<p role="status" style={{fontSize:13,marginTop:13,color:message.includes("성공")?"#16804a":"#b42338"}}>{message}</p>}
  </section>
