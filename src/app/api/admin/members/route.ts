@@ -1,7 +1,7 @@
 import {ensureRestrictions,restrictionFields} from "@/lib/member-restrictions";
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
-import {currentUser,database,init,isAdmin} from "@/lib/auth";
+import {currentUser,database,init,isAdmin,unseal} from "@/lib/auth";
 export const dynamic="force-dynamic";
 async function schema(){await init();await database().query("ALTER TABLE km_users ADD COLUMN IF NOT EXISTS frozen BOOLEAN NOT NULL DEFAULT FALSE");await database().query("CREATE TABLE IF NOT EXISTS km_admin_member_audit(id UUID PRIMARY KEY,admin_id UUID NOT NULL REFERENCES km_users(id),member_id UUID NOT NULL REFERENCES km_users(id),action TEXT NOT NULL,detail JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())")}
 export async function GET(){const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return NextResponse.json({error:"FORBIDDEN"},{status:403});try{
@@ -9,8 +9,8 @@ export async function GET(){const u=await currentUser();if(!u?.id||!(await isAdm
  const info=await db.query("SELECT to_regclass('public.km_krw_wallets') IS NOT NULL AS wallet,EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='km_users' AND column_name='frozen') AS frozen");
  const hasWallet=info.rows[0]?.wallet===true,hasFrozen=info.rows[0]?.frozen===true;
  await ensureRestrictions();
- const result=await db.query("SELECT u.id,u.username,u.created_at,"+(hasFrozen?"u.frozen":"FALSE AS frozen")+",p.legal_name,p.bank,p.account_holder,p.bank_verified,p.referral,"+(hasWallet?"COALESCE(w.balance,0)":"0")+"::bigint AS balance,COALESCE(rest.stock_trading_blocked,FALSE) AS stock_trading_blocked,COALESCE(rest.cfd_trading_blocked,FALSE) AS cfd_trading_blocked,COALESCE(rest.deposits_withdrawals_blocked,FALSE) AS deposits_withdrawals_blocked,COALESCE(rest.login_blocked,FALSE) AS login_blocked FROM km_users u LEFT JOIN km_member_profiles p ON p.user_id=u.id LEFT JOIN km_member_restrictions rest ON rest.user_id=u.id "+(hasWallet?"LEFT JOIN km_krw_wallets w ON w.user_id=u.id ":"")+"ORDER BY u.created_at DESC LIMIT 300");
- return NextResponse.json({members:result.rows.map(x=>({...x,balance:Number(x.balance)}))},{headers:{"Cache-Control":"no-store"}});
+ const result=await db.query("SELECT u.id,u.username,u.created_at,"+(hasFrozen?"u.frozen":"FALSE AS frozen")+",p.legal_name,p.birth_date,p.phone_ciphertext,p.bank,p.account_ciphertext,p.account_holder,p.bank_verified,p.referral,"+(hasWallet?"COALESCE(w.balance,0)":"0")+"::bigint AS balance,COALESCE(rest.stock_trading_blocked,FALSE) AS stock_trading_blocked,COALESCE(rest.cfd_trading_blocked,FALSE) AS cfd_trading_blocked,COALESCE(rest.deposits_withdrawals_blocked,FALSE) AS deposits_withdrawals_blocked,COALESCE(rest.login_blocked,FALSE) AS login_blocked FROM km_users u LEFT JOIN km_member_profiles p ON p.user_id=u.id LEFT JOIN km_member_restrictions rest ON rest.user_id=u.id "+(hasWallet?"LEFT JOIN km_krw_wallets w ON w.user_id=u.id ":"")+"ORDER BY u.created_at DESC LIMIT 300");
+ return NextResponse.json({members:result.rows.map(x=>{const {phone_ciphertext,account_ciphertext,...row}=x;return {...row,phone:phone_ciphertext?unseal(phone_ciphertext):null,account:account_ciphertext?unseal(account_ciphertext):null,balance:Number(x.balance)}})},{headers:{"Cache-Control":"no-store"}});
  }catch(e){console.error("ADMIN_MEMBERS_READ_FAILED",e instanceof Error?e.message:String(e));return NextResponse.json({error:"MEMBERS_UNAVAILABLE"},{status:503})}}
 export async function PATCH(req:Request){const admin=await currentUser();if(!admin?.id||!(await isAdmin(admin.id)))return NextResponse.json({error:"FORBIDDEN"},{status:403});
 const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();if(!origin||new URL(origin).host!==host)return NextResponse.json({error:"INVALID_ORIGIN"},{status:403});
