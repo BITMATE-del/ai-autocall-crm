@@ -59,3 +59,22 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .orderBtn.sale:not(:disabled){background:#356cce;color:#fff}
 .orderBtn.sale:not(:disabled):hover{background:#2b5ab0}
 .orderBtn.sale:disabled{background:#aeb5c2!important;color:#fff;cursor:not-allowed;opacity:.8}
+
+
+/* Mobile stock trading workspace: prevent page-wide overflow */
+@media(max-width:760px){
+ html,body{max-width:100%;overflow-x:clip}
+ .app,.app main{min-width:0;max-width:100%}
+ .header{padding:0 12px;gap:9px}
+ .headerRight{min-width:0;gap:8px}
+ .searchTop{min-width:0}
+ .bottomPanels{min-width:0;max-width:100%;grid-template-columns:minmax(0,1fr)}
+ .bottomPanels>.panel{min-width:0;max-width:100%}
+ .bottomPanels .tableWrap{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .bottomPanels .tbl{min-width:400px}
+ .kmOrderModalBackdrop{padding:12px}
+ .kmOrderModal{padding:25px 18px 20px}
+ button,a{touch-action:manipulation}
+ input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:max(16px,1em)}
+}
+@media(max-width:400px){.kmOrderModal h2{font-size:18px}.bottomPanels .tbl td,.bottomPanels .tbl th{padding-left:7px;padding-right:7px}}
