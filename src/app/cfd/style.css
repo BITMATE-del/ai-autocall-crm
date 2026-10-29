@@ -35,3 +35,19 @@
 .ct .submit.submitUp:not(:disabled){background:#3468ba;color:#fff}
 .ct .submit.submitDown:not(:disabled){background:#356cce;color:#fff}
 .ct .submit:disabled{background:#aeb5bf!important;color:#fff!important;cursor:not-allowed;opacity:.85}
+
+
+/* Mobile CFD chart: reserve the complete TradingView canvas and prevent iframe clipping. */
+@media(max-width:800px){
+ .ct main,.ct .columns,.ct .columns>.panel,.ct .chartBody{min-width:0}
+ .ct .columns{display:grid;grid-template-columns:minmax(0,1fr)}
+ .ct .chart{overflow:visible}
+ .ct .chartBody{padding:16px 12px 14px;overflow:visible}
+ .ct .tvWidget{display:block;position:relative;width:100%;min-width:0;height:460px;min-height:460px;margin-top:12px;overflow:hidden}
+ .ct .tvWidget iframe{display:block;width:100%!important;height:100%!important;max-width:100%;border:0}
+ .ct .coinSelect{padding:12px;gap:7px}
+}
+@media(max-width:440px){
+ .ct .tvWidget{height:420px;min-height:420px}
+ .ct .chartBody h2{font-size:25px}
+}
