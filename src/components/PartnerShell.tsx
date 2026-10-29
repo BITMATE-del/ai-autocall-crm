@@ -14,7 +14,7 @@ const entries=[
  {name:"하부 권한 부여",href:"/partner/permissions",permission:"PERMISSION_DELEGATE",icon:ShieldCheck},
  {name:"추천코드",href:"/partner/referrals",permission:"REFERRAL_MANAGE",icon:Ticket},
  {name:"입금 실적·배분",href:"/partner/deposit-shares",permission:"PERFORMANCE_VIEW",icon:TrendingUp},
- {name:"출금 검토 요청",href:"/partner/withdraw-holds",permission:"WITHDRAW_HOLD_REQUEST",icon:Wallet},
+
  {name:"매수금액 보정",href:"/partner/purchase-corrections",permission:"PURCHASE_CORRECTION",icon:TrendingUp},
  {name:"주식 이벤트 지급",href:"/partner/stock-events",permission:"STOCK_EVENT_GRANT",icon:Ticket},
  {name:"CFD 판정보정",href:"/partner/cfd-corrections",permission:"",icon:ShieldCheck},
