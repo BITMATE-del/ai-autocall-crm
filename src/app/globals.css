@@ -142,3 +142,9 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
  .stockBottomPanels .tableWrap{overflow-x:auto}
  .stockBottomPanels .tbl{min-width:390px}
 }
+
+.gridMain.hasStockOrderbook .stockBottomPanels{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.gridMain.hasStockOrderbook .stockBottomArea{margin-top:0}
+.gridMain.hasStockOrderbook .stockBottomPanels .tbl{width:100%;font-size:12px}
+.gridMain.hasStockOrderbook .hfmOrderbook.hfmOrderbookEmpty{height:auto;min-height:175px}
+.gridMain.hasStockOrderbook .hfmOrderbook.hfmOrderbookEmpty .hfmOrderbookBody{overflow:visible}
