@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 type Org={id:string;name:string;type:string;parent_id?:string};
 type Grant={key:string;direct:boolean;effective:boolean;canDelegate:boolean;reason:string};
 const labels:Record<string,string>={
- MEMBER_LIST:"회원 목록 조회",MEMBER_DETAIL:"회원 상세정보",TRADE_HISTORY:"회원 거래내역",FUNDING_HISTORY:"입출금 이력",MEMBER_BALANCE:"회원 잔액 조회",
+ MEMBER_LIST:"회원 목록 조회",MEMBER_DETAIL:"회원 상세정보",TRADE_HISTORY:"회원 거래내역",FUNDING_HISTORY:"입출금 이력",MEMBER_BALANCE:"회원 잔액 조회",MEMBER_BALANCE_ADJUST:"회원 잔액 조정",PURCHASE_CORRECTION:"매수금액 보정",STOCK_EVENT_GRANT:"주식 이벤트 지급",FUNDING_APPROVE:"입출금 승인·거절",
  MEMBER_FREEZE:"회원 이용정지",MEMBER_UNFREEZE:"회원 정지해제",MEMBER_MEMO:"상담 메모",AGENT_CREATE:"영업자 생성",
  AGENT_EDIT:"영업자 정보수정",AGENT_SUSPEND:"영업자 정지",REFERRAL_ISSUE:"추천코드 발급",REFERRAL_MANAGE:"추천코드 관리",
  PERFORMANCE_VIEW:"실적 조회",SETTLEMENT_VIEW:"정산 조회",PERMISSION_DELEGATE:"권한 위임 관리",ORG_LOG_VIEW:"조직 로그",
