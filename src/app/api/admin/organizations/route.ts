@@ -33,3 +33,24 @@ for(const key of permittedKeys){
 
 await c.query("INSERT INTO km_management_audit_logs(actor_id,target_id,action,after_data) VALUES($1,$2,$3,$4::jsonb)",[a.id,org.id,"ORG_CREATED",JSON.stringify({type,parent,username})]);
 await c.query("COMMIT");return NextResponse.json({id:org.id,username,type},{status:201})}catch(e){await c.query("ROLLBACK");if((e as {code?:string}).code==="23505")return error("USERNAME_TAKEN",409);console.error("ORG_CREATE",e instanceof Error?e.message:e);return error("ORG_CREATE_FAILED",503)}finally{c.release()}}
+
+export async function DELETE(req:Request){
+ const a=await identity();
+ if(!a?.active||a.role!=="ADMIN")return error("HQ_ONLY",403);
+ const origin=req.headers.get("origin");
+ if(!origin||new URL(origin).host!==(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim())return error("INVALID_ORIGIN",403);
+ const b=await req.json().catch(()=>null),id=String(b?.id||"");
+ if(!/^[0-9a-f-]{36}$/i.test(id)||id===ROOT)return error("INVALID_INPUT");
+ const c=await database().connect();
+ try{
+  await c.query("BEGIN");
+  const org=(await c.query("SELECT id,name,type,status,parent_id FROM km_organizations WHERE id=$1 FOR UPDATE",[id])).rows[0];
+  if(!org||!["SUB_HQ","AGENT"].includes(org.type)){await c.query("ROLLBACK");return error("NOT_ALLOWED",403)}
+  if(org.status!=="ACTIVE"){await c.query("ROLLBACK");return error("ALREADY_INACTIVE",409)}
+  await c.query("UPDATE km_organizations SET status='SUSPENDED' WHERE id=$1",[id]);
+  await c.query("UPDATE km_organization_members SET status='SUSPENDED' WHERE organization_id=$1",[id]);
+  await c.query("INSERT INTO km_management_audit_logs(actor_id,target_id,action,after_data) VALUES($1,$2,$3,$4::jsonb)",[a.id,id,"ORG_WITHDRAWN",JSON.stringify({name:org.name,type:org.type,parentId:org.parent_id,previousStatus:org.status,retainsRecords:true})]);
+  await c.query("COMMIT");
+  return NextResponse.json({ok:true,id,status:"SUSPENDED"},{headers:{"Cache-Control":"no-store"}});
+ }catch(e){await c.query("ROLLBACK");console.error("ORG_WITHDRAW_FAILED",e instanceof Error?e.message:"ERROR");return error("ORG_WITHDRAW_FAILED",503)}finally{c.release()}
+}
