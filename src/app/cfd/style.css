@@ -32,6 +32,6 @@
 .ct .choice button.down:not(.active){color:#376bc5}
 .ct .up.active{background:#fff0f3;border-color:#e97891;color:#c82344}
 .ct .down.active{background:#edf4ff;border-color:#79a2ef;color:#2463c9}
-.ct .submit.submitUp:not(:disabled){background:#c51f3b;color:#fff}
+.ct .submit.submitUp:not(:disabled){background:#3468ba;color:#fff}
 .ct .submit.submitDown:not(:disabled){background:#356cce;color:#fff}
 .ct .submit:disabled{background:#aeb5bf!important;color:#fff!important;cursor:not-allowed;opacity:.85}
