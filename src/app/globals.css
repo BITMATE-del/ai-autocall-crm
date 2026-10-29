@@ -48,3 +48,8 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .bottomPanels .tbl tbody tr{height:45px}
 .bottomPanels .tbl th,.bottomPanels .tbl td{height:45px;box-sizing:border-box;vertical-align:middle;padding-top:8px;padding-bottom:8px;line-height:18px}
 .bottomPanels .tbl th{height:42px}
+
+/* Sell actions use the same HFM brand emphasis as other primary actions; disabled remains visually distinct. */
+.orderBtn.sale{background:#bf2032;color:#fff}
+.segmented .sell.active{color:#bf2032}
+.orderBtn:disabled{background:#aeb5c2!important;color:#fff;cursor:not-allowed;opacity:.8}
