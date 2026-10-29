@@ -5,12 +5,12 @@ import {actorFor,memberInScope,permitted} from "@/lib/org-access";
 import {ensureStockEventSchema} from "@/lib/stock-event";
 export const dynamic="force-dynamic";
 const error=(message:string,status=400)=>NextResponse.json({error:message},{status});
-async function superAdmin(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"STOCK_EVENT_GRANT")?u:null}
+async function superAdmin(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id!);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"STOCK_EVENT_GRANT")?u:null}
 const originOK=(req:Request)=>{const origin=req.headers.get("origin");const host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();try{return !!origin&&new URL(origin).host===host}catch{return false}};
 export async function GET(req:Request){
  const u=await superAdmin().catch(()=>null);if(!u)return error("PERMISSION_DENIED",403);
  try{await ensureStockEventSchema();const q=(new URL(req.url).searchParams.get("q")||"").slice(0,80);
- const actor=await actorFor(u.id);if(!actor?.org)return error("FORBIDDEN",403);
+ const actor=await actorFor(u.id!);if(!actor?.org)return error("FORBIDDEN",403);
  const [members,grants]=await Promise.all([
  database().query("SELECT id,username,email FROM km_users WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=km_users.id AND (ma.organization_id=$2 OR ($3='SUB_HQ' AND ma.sub_hq_id=$2))) AND ($1='' OR username ILIKE '%'||$1||'%' OR email ILIKE '%'||$1||'%' OR id::text ILIKE '%'||$1||'%') ORDER BY username LIMIT 70",[q,actor.org,actor.role]),
  database().query("SELECT g.id,g.event_key,g.event_name,g.symbol,g.granted_qty,g.available_qty,g.asset_type,g.notify_member,g.unit_cost_krw,g.granted_at,g.user_id,u.username FROM km_stock_event_grants g JOIN km_users u ON u.id=g.user_id WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=g.user_id AND (ma.organization_id=$1 OR ($2='SUB_HQ' AND ma.sub_hq_id=$1))) ORDER BY g.granted_at DESC LIMIT 100",[actor.org,actor.role])]);
@@ -22,7 +22,7 @@ export async function POST(req:Request){
  if(!originOK(req))return error("INVALID_ORIGIN",403);
  const body=await req.json().catch(()=>null),symbol=String(body?.symbol||""),eventKey=String(body?.eventKey||"").trim(),eventName=String(body?.eventName||"").trim(),qtyText=String(body?.qty||""),unitCostText=String(body?.unitCostKrw||""),notifyMember=body?.notifyMember!==false,users=body?.userIds;
  if(!/^\d{6}$/.test(symbol)||!/^.{3,100}$/.test(eventKey)||eventName.length<2||eventName.length>120||!/^[1-9]\d{0,5}$/.test(qtyText)||!/^[1-9]\d{0,9}$/.test(unitCostText)||!Array.isArray(users)||users.length<1||users.length>100||users.some((id:unknown)=>typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))||new Set(users).size!==users.length)return error("INVALID_EVENT_REQUEST",400);
- const actor=await actorFor(admin.id);if(!actor)return error("FORBIDDEN",403);for(const id of users){if(!(await memberInScope(actor,id)))return error("OUT_OF_SCOPE",403)}
+ const actor=await actorFor(admin.id!);if(!actor)return error("FORBIDDEN",403);for(const id of users){if(!(await memberInScope(actor,id)))return error("OUT_OF_SCOPE",403)}
  const qty=Number(qtyText),unitCost=Number(unitCostText),totalCost=qty*unitCost;if(!Number.isSafeInteger(totalCost)||totalCost>100000000000)return error("INVALID_EVENT_COST",400);const results:{userId:string;status:string;grantId?:string}[]=[];
  try{await ensureStockEventSchema();
  for(const userId of users){const c=await database().connect();try{
@@ -42,7 +42,7 @@ export async function DELETE(req:Request){
  const admin=await superAdmin().catch(()=>null);if(!admin)return error("PERMISSION_DENIED",403);
  if(!originOK(req))return error("INVALID_ORIGIN",403);
  const b=await req.json().catch(()=>null),id=String(b?.grantId||"");if(!/^[0-9a-f-]{36}$/i.test(id))return error("INVALID_GRANT_ID");
- const actor=await actorFor(admin.id);if(!actor)return error("FORBIDDEN",403);
+ const actor=await actorFor(admin.id!);if(!actor)return error("FORBIDDEN",403);
  try{await ensureStockEventSchema();const c=await database().connect();try{
  await c.query("BEGIN");
  const g=(await c.query("SELECT * FROM km_stock_event_grants WHERE id=$1 FOR UPDATE",[id])).rows[0];
