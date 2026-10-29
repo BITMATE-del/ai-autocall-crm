@@ -6,7 +6,7 @@ async function context(){
  const u=await currentUser();if(!u?.id)return null;
  const a=await actorFor(u.id);
  if(!a?.active||!a.org||!["SUB_HQ","AGENT"].includes(a.role))return null;
- return {u,a};
+ return {userId:u.id,orgId:a.org,role:a.role};
 }
 async function chats(id:string,org:string,role:string){
  const r=role==="SUB_HQ"?await database().query(
@@ -16,7 +16,7 @@ async function chats(id:string,org:string,role:string){
 }
 export async function GET(){
  const c=await context();if(!c)return NextResponse.json({error:"FORBIDDEN"},{status:403});
- try{const linked=await chats(c.u.id,c.a.org!,c.a.role);
+ try{const linked=await chats(c.userId,c.orgId,c.role);
  return NextResponse.json({connected:linked.length>0,count:linked.length},{headers:{"Cache-Control":"no-store"}})
  }catch{return NextResponse.json({error:"STATUS_UNAVAILABLE"},{status:503})}
 }
@@ -25,7 +25,7 @@ export async function POST(req:NextRequest){
  const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||req.nextUrl.host).split(",")[0].trim();
  if(!origin||new URL(origin).host!==host)return NextResponse.json({error:"INVALID_ORIGIN"},{status:403});
  try{
-  const linked=await chats(c.u.id,c.a.org!,c.a.role);
+  const linked=await chats(c.userId,c.orgId,c.role);
   if(!linked.length)return NextResponse.json({error:"NOT_LINKED"},{status:404});
   const token=process.env.HFM_TELEGRAM_BOT_TOKEN;
   if(!token)return NextResponse.json({error:"BOT_NOT_CONFIGURED"},{status:503});
