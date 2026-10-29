@@ -53,3 +53,9 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .orderBtn.sale{background:#bf2032;color:#fff}
 .segmented .sell.active{color:#bf2032}
 .orderBtn:disabled{background:#aeb5c2!important;color:#fff;cursor:not-allowed;opacity:.8}
+
+/* HFM stock sell: match CFD DOWN blue, with disabled state kept grey. */
+.segmented .sell.active{background:#edf4ff;color:#2463c9;border:1px solid #79a2ef;box-shadow:none}
+.orderBtn.sale:not(:disabled){background:#356cce;color:#fff}
+.orderBtn.sale:not(:disabled):hover{background:#2b5ab0}
+.orderBtn.sale:disabled{background:#aeb5c2!important;color:#fff;cursor:not-allowed;opacity:.8}
