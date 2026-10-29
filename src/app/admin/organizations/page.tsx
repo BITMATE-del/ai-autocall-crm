@@ -10,6 +10,17 @@ export default function Organizations(){
  const [type,setType]=useState("SUB_HQ"),[name,setName]=useState(""),[username,setUsername]=useState(""),[password,setPassword]=useState(""),[selected,setSelected]=useState(ROOT),[busy,setBusy]=useState(false);
  async function load(){try{const r=await fetch("/api/admin/organizations",{cache:"no-store",signal:AbortSignal.timeout(7000)});if(!r.ok)throw Error("목록 조회 실패");setItems((await r.json()).organizations||[])}catch(e){setError(String(e))}}
  useEffect(()=>{void load()},[]);
+ async function withdraw(x:Org){
+  if(busy||x.type==="HQ"||x.status!=="ACTIVE")return;
+  const kind=x.type==="SUB_HQ"?"부본사":"영업자";
+  if(!window.confirm(kind+" '"+displayName(x)+"' 계정을 탈퇴 처리하시겠습니까?\\n로그인 및 운영 권한이 차단되며, 기존 회원·거래·정산 기록은 보존됩니다."))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const r=await fetch("/api/admin/organizations",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:x.id}),signal:AbortSignal.timeout(15000)});
+   const j=await r.json();if(!r.ok)throw Error(j.error||"탈퇴 처리 실패");
+   setNotice(displayName(x)+" 계정을 탈퇴 처리했습니다.");await load();
+  }catch(e){setError(e instanceof Error?e.message:"탈퇴 처리 실패")}finally{setBusy(false)}
+ }
  async function create(){
   setError("");setNotice("");
   if(name.trim().length<2||name.trim().length>65){setError(messages.INVALID_NAME);return}
@@ -36,5 +47,5 @@ export default function Organizations(){
  <input aria-label="초기 비밀번호" placeholder="초기 비밀번호 (12자 이상)" type="password" minLength={12} maxLength={128} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/>
  <button className="am-primary" disabled={busy} onClick={create}>{busy?"생성 중":"생성"}</button></div>
  <p style={{fontSize:12,color:"#64748b",marginTop:11}}>아이디는 영문·숫자·밑줄만 사용합니다. 비밀번호는 최소 12자로 설정해 주세요.</p></section>
- <section className="am-panel"><h2>조직 목록</h2>{items.map(x=><div key={x.id} style={{padding:12,borderBottom:"1px solid #eee"}}><strong>{displayName(x)}</strong> · {x.type==="HQ"?"본사":x.type==="SUB_HQ"?"부본사":"영업자"} · {x.username||"본사"} {x.type!=="HQ"&&<Link href={"/admin/organization-permissions?organizationId="+x.id} style={{float:"right",fontWeight:700,color:"#bf2032",textDecoration:"none",border:"1px solid #ead4d8",padding:"7px 13px",borderRadius:7}}>권한 부여·회수</Link>}</div>)}</section></>
+ <section className="am-panel"><h2>조직 목록</h2>{items.map(x=><div key={x.id} style={{padding:12,borderBottom:"1px solid #eee"}}><strong>{displayName(x)}</strong> · {x.type==="HQ"?"본사":x.type==="SUB_HQ"?"부본사":"영업자"} · {x.username||"본사"} <span style={{float:"right",display:"inline-flex",gap:8,alignItems:"center"}}>{x.status!=="ACTIVE"&&<span style={{color:"#a14c54",fontSize:12,fontWeight:700}}>탈퇴 처리</span>}{x.type!=="HQ"&&x.status==="ACTIVE"&&<><Link href={"/admin/organization-permissions?organizationId="+x.id} style={{fontWeight:700,color:"#3468ba",textDecoration:"none",border:"1px solid #dce5f1",padding:"7px 13px",borderRadius:7}}>권한 부여·회수</Link><button type="button" disabled={busy} onClick={()=>void withdraw(x)} style={{padding:"7px 13px",borderRadius:7,border:"1px solid #f2d4d8",background:"#fff",color:"#ae3548",fontWeight:700,cursor:"pointer"}}>계정 탈퇴</button></>}</span></div>)}</section></>
 }
