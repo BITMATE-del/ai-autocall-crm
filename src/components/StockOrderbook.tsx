@@ -18,6 +18,6 @@ export default function StockOrderbook({symbol}:{symbol:string}){
  {book&&<><div className="hfmOrderbookLevels">{[...book.asks].reverse().map((v,i)=><div className="hfmOrderbookLevel ask" key={"a"+i}><div className="hfmOrderbookBar" style={{width:Math.max(0,Math.min(100,v.qty/max*100))+"%"}}/><span>{fmt(v.qty)}</span><strong>{fmt(v.price)}</strong></div>)}</div>
  <div className="hfmOrderbookSpread"><span>매도 {book.totalAsk==null?"—":fmt(book.totalAsk)}주</span><span>매수 {book.totalBid==null?"—":fmt(book.totalBid)}주</span></div>
  <div className="hfmOrderbookLevels">{book.bids.map((v,i)=><div className="hfmOrderbookLevel bid" key={"b"+i}><div className="hfmOrderbookBar" style={{width:Math.max(0,Math.min(100,v.qty/max*100))+"%"}}/><span>{fmt(v.qty)}</span><strong>{fmt(v.price)}</strong></div>)}</div>
- <p className="hfmOrderbookFoot">조회 시각 {new Date(book.asOf).toLocaleTimeString("ko-KR",{timeZone:"Asia/Seoul"})} · 15초 갱신</p></>}
- <p className="hfmOrderbookNotice">호가는 참고 시세입니다. 주문은 기존 내부 체결 기준으로 처리됩니다.</p></div></section>
+ </>}
+ </div></section>
 }
