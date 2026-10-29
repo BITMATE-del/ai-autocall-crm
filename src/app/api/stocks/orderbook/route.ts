@@ -1,5 +1,4 @@
 import {NextRequest,NextResponse} from "next/server";
-import {database,currentUser} from "@/lib/auth";
 import {kisMarketRequest} from "@/lib/kis-stock-quote";
 export const dynamic="force-dynamic";
 const number=(v:unknown)=>{const n=Number(String(v??"").replace(/,/g,""));return Number.isSafeInteger(n)&&n>=0?n:null};
@@ -7,14 +6,6 @@ export async function GET(req:NextRequest){
  const symbol=req.nextUrl.searchParams.get("symbol")||"";
  if(!/^\d{6}$/.test(symbol))return NextResponse.json({error:"INVALID_SYMBOL"},{status:400});
  try{
- const u=await currentUser();
- if(u?.id){
-  try{
-   await database().query("INSERT INTO km_kis_orderbook_interest(symbol,last_seen) VALUES($1,NOW()) ON CONFLICT(symbol) DO UPDATE SET last_seen=NOW()",[symbol]);
-   const live=await database().query("SELECT payload,received_at FROM km_kis_orderbook_live WHERE symbol=$1 AND received_at>NOW()-INTERVAL '8 seconds'",[symbol]);
-   if(live.rowCount){const v=live.rows[0];return NextResponse.json({...v.payload,market:"KRX",asOf:v.received_at,source:"KIS_WS"},{headers:{"Cache-Control":"private, no-store"}})}
-  }catch{}
- }
  const json=await kisMarketRequest("/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn","FHKST01010200",{FID_COND_MRKT_DIV_CODE:"J",FID_INPUT_ISCD:symbol}) as {output1?:Record<string,string>;rt_cd?:string};
  const d=json.output1;if(!d)throw Error("EMPTY_ORDERBOOK");
  const asks=[],bids=[];
