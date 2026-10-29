@@ -5,12 +5,12 @@ import {currentUser,database} from "@/lib/auth";
 import {actorFor,memberInScope,permitted} from "@/lib/org-access";
 export const dynamic="force-dynamic";
 const err=(error:string,status=400)=>NextResponse.json({error},{status});
-async function admin(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"PURCHASE_CORRECTION")?u:null}
+async function admin(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id!);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"PURCHASE_CORRECTION")?u:null}
 export async function GET(req:Request){
  const u=await admin().catch(()=>null);if(!u)return err("PERMISSION_DENIED",403);
  const url=new URL(req.url),kind=url.searchParams.get("kind")==="STOCK"?"STOCK":"CFD",q=(url.searchParams.get("q")||"").slice(0,100);
  try{
- const c=database();const actor=await actorFor(u.id);if(!actor?.org)return err("FORBIDDEN",403);
+ const c=database();const actor=await actorFor(u.id!);if(!actor?.org)return err("FORBIDDEN",403);
  const rows=kind==="CFD"?await c.query(`SELECT o.id,o.user_id,u.username,u.email,o.symbol,o.amount_krw AS amount,o.status,
  (SELECT SUM(delta_krw)::bigint FROM km_krw_ledger WHERE order_id=o.id AND kind='CFD_STAKE') AS stake_delta,
  (SELECT COUNT(*)::int FROM km_krw_ledger WHERE order_id=o.id AND kind='CFD_STAKE') AS stake_count,
@@ -33,7 +33,7 @@ export async function POST(req:Request){
  const money=Number(target);if(!Number.isSafeInteger(money))return err("INVALID_AMOUNT");
  if(kind==="STOCK"){
  const parsed=/^([0-9a-f-]{36}):(\d{6})$/i.exec(id);if(!parsed)return err("INVALID_HOLDING",400);
- const [,member,symbol]=parsed;const actor=await actorFor(u.id);if(!actor||!(await memberInScope(actor,member)))return err("OUT_OF_SCOPE",403);try{
+ const [,member,symbol]=parsed;const actor=await actorFor(u.id!);if(!actor||!(await memberInScope(actor,member)))return err("OUT_OF_SCOPE",403);try{
  await ensurePurchaseCorrectionSchema();
  const c=await database().connect();try{
  await c.query("BEGIN");
@@ -61,7 +61,7 @@ export async function POST(req:Request){
  const c=await database().connect();try{
  await c.query("BEGIN");
  const row=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[id])).rows[0];
- const actor=await actorFor(u.id);if(!row||!actor||!(await memberInScope(actor,row.user_id))){await c.query("ROLLBACK");return err("OUT_OF_SCOPE",403)}
+ const actor=await actorFor(u.id!);if(!row||!actor||!(await memberInScope(actor,row.user_id))){await c.query("ROLLBACK");return err("OUT_OF_SCOPE",403)}
  if(!row||row.status!=="ACTIVE"||new Date(row.expires_at).getTime()<=Date.now()){await c.query("ROLLBACK");return err("ORDER_NOT_ACTIVE",409)}
  const record=(await c.query("SELECT requested_amount_krw FROM km_cfd_order_input_records WHERE order_id=$1 FOR UPDATE",[id])).rows[0];
  const recordedOriginal=record?.requested_amount_krw==null?null:Number(record.requested_amount_krw);
