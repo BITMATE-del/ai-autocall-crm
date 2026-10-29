@@ -148,3 +148,10 @@ body{background:#ffffff}*{box-sizing:border-box}body{margin:0;background:var(--b
 .gridMain.hasStockOrderbook .stockBottomPanels .tbl{width:100%;font-size:12px}
 .gridMain.hasStockOrderbook .hfmOrderbook.hfmOrderbookEmpty{height:auto;min-height:175px}
 .gridMain.hasStockOrderbook .hfmOrderbook.hfmOrderbookEmpty .hfmOrderbookBody{overflow:visible}
+
+/* HFM unified stock panel rhythm */
+.gridMain.hasStockOrderbook .panel{border-radius:12px;box-shadow:none}
+.gridMain.hasStockOrderbook .stockBottomPanels{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.gridMain.hasStockOrderbook .stockBottomPanels .tbl{font-size:10px}
+.gridMain.hasStockOrderbook .stockBottomPanels .tbl th,.gridMain.hasStockOrderbook .stockBottomPanels .tbl td{padding:9px 5px}
+@media(max-width:760px){.gridMain.hasStockOrderbook .stockBottomPanels{grid-template-columns:1fr}}
