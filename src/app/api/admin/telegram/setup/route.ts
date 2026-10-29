@@ -22,3 +22,16 @@ export async function POST(req:NextRequest){
   return NextResponse.json({ok:true});
  }catch{return NextResponse.json({error:"TELEGRAM_UNREACHABLE"},{status:503})}
 }
+
+export async function GET(){
+ const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return NextResponse.json({error:"FORBIDDEN"},{status:403});
+ const token=process.env.HFM_TELEGRAM_BOT_TOKEN;
+ if(!token)return NextResponse.json({error:"BOT_TOKEN_MISSING"},{status:503});
+ try{
+  const r=await fetch("https://api.telegram.org/bot"+token+"/getWebhookInfo",{cache:"no-store",signal:AbortSignal.timeout(7000)});
+  const j=await r.json();
+  if(!r.ok||!j.ok)return NextResponse.json({error:"WEBHOOK_STATUS_FAILED"},{status:502});
+  const info=j.result||{};
+  return NextResponse.json({ok:true,configuredUrl:info.url||null,expectedUrl:"https://hfmtrade.co.kr/api/telegram/webhook",pendingUpdates:info.pending_update_count??null,lastErrorDate:info.last_error_date?new Date(info.last_error_date*1000).toISOString():null,lastErrorMessage:String(info.last_error_message||"").slice(0,300)||null,maxConnections:info.max_connections??null},{headers:{"Cache-Control":"no-store"}});
+ }catch{return NextResponse.json({error:"TELEGRAM_STATUS_UNREACHABLE"},{status:503})}
+}
