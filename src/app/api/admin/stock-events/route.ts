@@ -18,8 +18,9 @@ export async function GET(req:Request){
 export async function POST(req:Request){
  const admin=await superAdmin().catch(()=>null);if(!admin)return error("HEADQUARTERS_ONLY",403);
  if(!originOK(req))return error("INVALID_ORIGIN",403);
- const body=await req.json().catch(()=>null),symbol=String(body?.symbol||""),eventKey=String(body?.eventKey||"").trim(),eventName=String(body?.eventName||"").trim(),qtyText=String(body?.qty||""),unitCostText=String(body?.unitCostKrw||""),notifyMember=body?.notifyMember!==false,users=body?.userIds;
+ const body=await req.json().catch(()=>null),symbol=String(body?.symbol||""),eventKey=String(body?.eventKey||"").trim(),eventName=String(body?.eventName||"").trim(),qtyText=String(body?.qty||""),unitCostText=String(body?.unitCostKrw||""),notifyMember=body?.notifyMember!==false,notificationTitle=String(body?.notificationTitle||"").trim(),notificationBody=String(body?.notificationBody||"").trim(),users=body?.userIds;
  if(!/^\d{6}$/.test(symbol)||!/^.{3,100}$/.test(eventKey)||eventName.length<2||eventName.length>120||!/^[1-9]\d{0,5}$/.test(qtyText)||!/^[1-9]\d{0,9}$/.test(unitCostText)||!Array.isArray(users)||users.length<1||users.length>100||users.some((id:unknown)=>typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))||new Set(users).size!==users.length)return error("INVALID_EVENT_REQUEST",400);
+ if(notificationTitle.length>80||notificationBody.length>600||(notifyMember&&((notificationTitle.length>0&&notificationTitle.length<2)||(notificationBody.length>0&&notificationBody.length<2))))return error("INVALID_NOTIFICATION_TEXT",400);
  const qty=Number(qtyText),unitCost=Number(unitCostText),totalCost=qty*unitCost;if(!Number.isSafeInteger(totalCost)||totalCost>100000000000)return error("INVALID_EVENT_COST",400);const results:{userId:string;status:string;grantId?:string}[]=[];
  try{await ensureStockEventSchema();
  for(const userId of users){const c=await database().connect();try{
@@ -27,7 +28,7 @@ export async function POST(req:Request){
  const prior=await c.query("SELECT id FROM km_stock_event_grants WHERE event_key=$1 AND user_id=$2 AND symbol=$3",[eventKey,userId,symbol]);
  if(prior.rowCount){await c.query("ROLLBACK");results.push({userId,status:"ALREADY_GRANTED"});continue}
  const grantId=randomUUID();
- await c.query("INSERT INTO km_stock_event_grants(id,event_key,event_name,user_id,symbol,granted_qty,available_qty,granted_by,notify_member,unit_cost_krw) VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9)",[grantId,eventKey,eventName,userId,symbol,qty,admin.id,notifyMember,unitCost]);
+ await c.query("INSERT INTO km_stock_event_grants(id,event_key,event_name,user_id,symbol,granted_qty,available_qty,granted_by,notify_member,unit_cost_krw,notification_title,notification_body) VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11)",[grantId,eventKey,eventName,userId,symbol,qty,admin.id,notifyMember,unitCost,notifyMember?notificationTitle||null:null,notifyMember?notificationBody||null:null]);
  await c.query("INSERT INTO km_stock_positions(user_id,symbol,qty,cost_krw) VALUES($1,$2,$3,$4) ON CONFLICT(user_id,symbol) DO UPDATE SET qty=km_stock_positions.qty+EXCLUDED.qty,cost_krw=km_stock_positions.cost_krw+EXCLUDED.cost_krw",[userId,symbol,qty,totalCost]);
  await c.query("INSERT INTO km_stock_event_movements(id,grant_id,user_id,symbol,kind,qty_delta,actor_id) VALUES($1,$2,$3,$4,'GRANT',$5,$6)",[randomUUID(),grantId,userId,symbol,qty,admin.id]);
  await c.query("COMMIT");results.push({userId,status:"GRANTED",grantId});
