@@ -23,3 +23,7 @@
 .kmSupportReplyModal button,.kmSupportReplyModal a{font:inherit;font-size:13px;font-weight:700;border-radius:9px;padding:11px 16px;text-decoration:none;cursor:pointer}
 .kmSupportReplyModal button{border:1px solid #cad5e6;background:#fff;color:#334968}
 .kmSupportReplyModal a{background:#3468ba;border:1px solid #3468ba;color:white}
+
+
+/* Mobile header: preserve horizontal navigation and keep alerts in viewport */
+@media(max-width:600px){.kmMemberHeader{padding:0 10px!important;column-gap:6px!important}.kmMemberHeader .kmMemberNav{max-width:calc(100vw - 20px)!important;gap:15px!important;scrollbar-width:thin;-webkit-overflow-scrolling:touch}.kmMemberHeader .kmMemberActions{min-width:0;gap:5px}.kmMemberHeader .kmMemberNotifyPanel{position:fixed;left:10px;right:10px;top:65px;width:auto;max-width:none;max-height:min(65dvh,500px);overflow-y:auto}.kmSupportReplyBackdrop{padding:12px}.kmSupportReplyModal{padding:25px 16px 18px}}
