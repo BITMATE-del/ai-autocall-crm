@@ -14,8 +14,8 @@ export default function CfdShareCard({id,close}:{id:string;close:()=>void}){
    const scale=Math.min(570/logo.naturalWidth,120/logo.naturalHeight);x.drawImage(logo,65,65,logo.naturalWidth*scale,logo.naturalHeight*scale);
    const label=(t:string,y:number,size=27,color="#71829e")=>{x.fillStyle=color;x.font="600 "+size+"px sans-serif";x.fillText(t,65,y)};
    label("CFD 거래 결과",260);label(trade.symbol,345,62,"#172b52");x.fillStyle="#3468ba";x.fillRect(65,400,770,2);
-   label("거래 방향",475);label(trade.side==="UP"?"상승":"하락",475,35,"#172b52");
-   label("거래 결과",555);label(trade.result,555,40,"#3468ba");
+   label("거래 방향",475);x.fillStyle="#172b52";x.font="700 35px sans-serif";x.fillText(trade.side==="UP"?"상승":"하락",610,475);
+   label("거래 결과",555);x.fillStyle="#3468ba";x.font="700 40px sans-serif";x.fillText(trade.result,610,555);
    label("확정 손익",650);const profit=(trade.profitKrw>0?"+":"")+trade.profitKrw.toLocaleString("ko-KR")+"원";
    let size=70;x.font="800 "+size+"px sans-serif";while(x.measureText(profit).width>770&&size>35){size-=2;x.font="800 "+size+"px sans-serif"}x.fillStyle="#3468ba";x.fillText(profit,65,745);
    label("수익률 "+trade.roiPercent+"%",835,32,"#172b52");
