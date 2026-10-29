@@ -7,12 +7,12 @@ import {ensureStockEventSchema} from "@/lib/stock-event";
 export const dynamic="force-dynamic";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-async function headquarters(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"PURCHASE_CORRECTION")?u:null}
+async function headquarters(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id!);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"PURCHASE_CORRECTION")?u:null}
 export async function GET(req:Request){
  const u=await headquarters().catch(()=>null);if(!u)return fail("PERMISSION_DENIED",403);
  const q=(new URL(req.url).searchParams.get("q")||"").slice(0,100);
  try{
- const actor=await actorFor(u.id);if(!actor?.org)return fail("FORBIDDEN",403);
+ const actor=await actorFor(u.id!);if(!actor?.org)return fail("FORBIDDEN",403);
  const r=await database().query(`SELECT p.user_id,p.symbol,p.qty,p.cost_krw AS amount,u.username,u.email
  FROM km_stock_positions p JOIN km_users u ON u.id=p.user_id
  WHERE EXISTS(SELECT 1 FROM km_member_attributions ma WHERE ma.user_id=p.user_id AND (ma.organization_id=$2 OR ($3='SUB_HQ' AND ma.sub_hq_id=$2))) AND p.qty>0 AND p.symbol ~ '^[0-9]{6}$'
@@ -44,7 +44,7 @@ export async function POST(req:Request){
  const m=/^([0-9a-f-]{36}):(\d{6})$/i.exec(id);
  if(!m||!uid.test(m[1])||!["QTY","AVG"].includes(mode)||!/^[1-9]\d{0,11}$/.test(target))return fail("INVALID_INPUT");
  const userId=m[1],symbol=m[2],requested=BigInt(target);
- const actor=await actorFor(u.id);if(!actor||!(await memberInScope(actor,userId)))return fail("OUT_OF_SCOPE",403);
+ const actor=await actorFor(u.id!);if(!actor||!(await memberInScope(actor,userId)))return fail("OUT_OF_SCOPE",403);
  if(requested>BigInt(100000000000))return fail("VALUE_TOO_LARGE");
  try{
  await ensurePurchaseCorrectionSchema();await ensureStockEventSchema();
