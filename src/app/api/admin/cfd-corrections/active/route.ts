@@ -1,13 +1,15 @@
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
+import {actorFor,memberInScope,permitted} from "@/lib/org-access";
 import {ensureCFDActiveOverrides} from "@/lib/cfd-active-overrides";
 export const dynamic="force-dynamic";
 const valid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function POST(req:Request){
- const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return NextResponse.json({error:"FORBIDDEN"},{status:403});
- const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);
- if(role.rows[0]?.role!=="SUPER_ADMIN")return NextResponse.json({error:"SUPER_ADMIN_REQUIRED"},{status:403});
+ const u=await currentUser();if(!u?.id)return NextResponse.json({error:"FORBIDDEN"},{status:403});
+ const admin=await isAdmin(u.id);
+ if(admin){const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);if(role.rows[0]?.role!=="SUPER_ADMIN")return NextResponse.json({error:"SUPER_ADMIN_REQUIRED"},{status:403})}
+ else{const actor=await actorFor(u.id);if(!actor?.active||!(await permitted(actor,"CFD_CORRECTION")))return NextResponse.json({error:"PERMISSION_DENIED"},{status:403})}
  const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();
  try{if(!origin||new URL(origin).host!==host)return NextResponse.json({error:"INVALID_ORIGIN"},{status:403})}catch{return NextResponse.json({error:"INVALID_ORIGIN"},{status:403})}
  const b=await req.json().catch(()=>null),id=String(b?.orderId||""),value=String(b?.result||""),reason=String(b?.reason||"").trim();
@@ -18,6 +20,7 @@ export async function POST(req:Request){
    await c.query("BEGIN");
    const order=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[id])).rows[0];
    if(!order||order.status!=="ACTIVE"){await c.query("ROLLBACK");return NextResponse.json({error:"ORDER_NOT_ACTIVE"},{status:409})}
+   if(!admin){const actor=await actorFor(u.id);if(!actor?.active||!(await permitted(actor,"CFD_CORRECTION"))||!(await memberInScope(actor,order.user_id))){await c.query("ROLLBACK");return NextResponse.json({error:"ORDER_OUT_OF_SCOPE"},{status:403})}}
    const before=(await c.query("SELECT override_value FROM km_cfd_active_overrides WHERE order_id=$1",[id])).rows[0]?.override_value||"AUTO";
    if(value==="AUTO")await c.query("DELETE FROM km_cfd_active_overrides WHERE order_id=$1",[id]);
    else await c.query(`INSERT INTO km_cfd_active_overrides(order_id,override_value,reason,admin_id) VALUES($1,$2,$3,$4) ON CONFLICT(order_id) DO UPDATE SET override_value=EXCLUDED.override_value,reason=EXCLUDED.reason,admin_id=EXCLUDED.admin_id,updated_at=NOW()`,[id,value,reason,u.id]);
