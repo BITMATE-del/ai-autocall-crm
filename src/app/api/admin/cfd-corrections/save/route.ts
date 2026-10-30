@@ -9,7 +9,7 @@ import {ensureIncidentSchema} from "@/lib/cfd-incident";
 export const dynamic="force-dynamic";
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(error:string,status:number)=>NextResponse.json({error},{status});
-async function privileged(){const u=await currentUser();if(!u?.id)return null;if(await isAdmin(u.id)){const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);return role.rows[0]?.role==="SUPER_ADMIN"?u:null}const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"CFD_CORRECTION")?u:null}
+async function privileged(){const u=await currentUser();if(!u?.id)return null;if(await isAdmin(u.id)){const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);return role.rows[0]?.role==="SUPER_ADMIN"?{id:u.id,username:u.username}:null}const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"CFD_CORRECTION")?{id:u.id,username:u.username}:null}
 function originOK(req:Request){const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();try{return !!origin&&new URL(origin).host===host}catch{return false}}
 type Body={orderId?:string;result?:string;reason?:string;evidence?:string;dryRun?:boolean};
 export async function POST(req:Request){
