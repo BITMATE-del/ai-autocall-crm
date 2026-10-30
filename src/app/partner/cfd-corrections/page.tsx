@@ -5,10 +5,11 @@ type Preview={newResult:string;oldPayoutKrw:number;newPayoutKrw:number;deltaKrw:
 const fmt=(v:string|number|null)=>v==null?"—":Number(v).toLocaleString("ko-KR");
 const inp={padding:"10px 12px",border:"1px solid #dce3ec",borderRadius:8,background:"#fff",color:"#172338"};
 export default function PartnerCorrections(){
- const[orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Order|null>(null),[query,setQuery]=useState(""),[mode,setMode]=useState("AUTO"),[reason,setReason]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[preview,setPreview]=useState<Preview|null>(null);
+ const defaultReason="담당자 직접 판정보정";
+ const[orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Order|null>(null),[query,setQuery]=useState(""),[mode,setMode]=useState("AUTO"),[reason,setReason]=useState(defaultReason),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[preview,setPreview]=useState<Preview|null>(null);
  async function load(){setBusy(true);try{const r=await fetch("/api/partner/cfd-corrections?q="+encodeURIComponent(query),{cache:"no-store",signal:AbortSignal.timeout(12000)});const j=await r.json();if(!r.ok)throw Error(j.error||"조회 실패");setOrders(j.orders||[])}catch(e){setMessage(e instanceof Error?e.message:"거래 조회 실패")}finally{setBusy(false)}}
  useEffect(()=>{void load()},[]);
- function open(o:Order){setSelected(o);setMode("AUTO");setReason("");setPreview(null);setMessage("")}
+ function open(o:Order){setSelected(o);setMode("AUTO");setReason(defaultReason);setPreview(null);setMessage("")}
  async function apply(dryRun:boolean){if(!selected||busy)return;
  if(!dryRun&&!confirm("선택한 거래에 판정보정을 저장하시겠습니까? 거래 정산과 회원 잔액에 반영됩니다."))return;
  setBusy(true);setMessage("");
