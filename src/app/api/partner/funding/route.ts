@@ -5,7 +5,7 @@ import {currentUser,database} from "@/lib/auth";
 import {actorFor,permitted} from "@/lib/org-access";
 export const dynamic="force-dynamic";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
-async function access(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"FUNDING_HISTORY")?a:null}
+async function access(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&(await permitted(a,"FUNDING_HISTORY")||await permitted(a,"FUNDING_APPROVE"))?a:null}
 async function schema(){await database().query("CREATE TABLE IF NOT EXISTS km_funding_partner_replies(request_id UUID PRIMARY KEY REFERENCES km_funding_requests(id),member_id UUID NOT NULL REFERENCES km_users(id),operator_id UUID NOT NULL REFERENCES km_users(id),message TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())")}
 const join="JOIN km_member_attributions ma ON ma.user_id=f.user_id AND (ma.organization_id=$1 OR ($2='SUB_HQ' AND ma.sub_hq_id=$1))";
 export async function GET(){const a=await access();if(!a)return fail("FORBIDDEN",403);try{await schema();const r=await database().query(`SELECT f.id,f.kind,f.amount_krw,f.status,f.created_at,u.username,p.message AS partner_reply,p.created_at AS replied_at FROM km_funding_requests f ${join} JOIN km_users u ON u.id=f.user_id LEFT JOIN km_funding_partner_replies p ON p.request_id=f.id ORDER BY (f.status<>'PENDING'),f.created_at DESC LIMIT 200`,[a.org,a.role]);return NextResponse.json({requests:r.rows},{headers:{"Cache-Control":"no-store"}})}catch{return fail("UNAVAILABLE",503)}}
