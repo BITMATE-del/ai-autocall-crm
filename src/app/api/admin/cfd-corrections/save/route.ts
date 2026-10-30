@@ -35,7 +35,16 @@ export async function POST(req:Request){
   }else{
    try{verified=await verifyCFDOutcome(original)}catch(e){return fail(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
   }
-  if(requested!=="AUTO"&&requested!==verified.result)return fail("RESULT_CONFLICTS_WITH_VERIFIED_MARKET",409);
+  // Direct authorized WIN/LOSS corrections are explicit overrides of the verified market outcome.
+  // Keep the verified quote separately and audit the decision; VOID still requires an incident.
+  const marketResult=verified.result,marketPayout=verified.payout;
+  if(requested==="WIN"||requested==="LOSS"){
+   const amount=Number(o.amount_krw);
+   if(!Number.isSafeInteger(amount)||amount<=0)return fail("INVALID_STAKE",409);
+   const payout=requested==="WIN"?Math.floor(amount*1.95):0;
+   if(!Number.isSafeInteger(payout))return fail("INVALID_PAYOUT",409);
+   verified={...verified,result:requested,payout,source:requested===marketResult?verified.source:"AUTHORIZED_DIRECT_OVERRIDE:"+verified.source};
+  }
   const old=Number(o.payout_krw||0),delta=verified.payout-old;
   if(!Number.isSafeInteger(delta)||Math.abs(delta)>1000000000)return fail("INVALID_DELTA",409);
   if(delta===0&&String(o.result)===verified.result)return fail("NO_CORRECTION_NEEDED",409);
@@ -52,15 +61,18 @@ export async function POST(req:Request){
     const proof=await c.query("SELECT id FROM km_cfd_verified_incidents WHERE id=$1 AND symbol=$2 AND reviewed_at IS NOT NULL AND start_at<=$3 AND end_at>=$4 FOR SHARE",[incidentId,locked.symbol,new Date(new Date(locked.expires_at).getTime()-Number(locked.duration_minutes||3)*60000),locked.expires_at]);
     if(!proof.rowCount){await c.query("ROLLBACK");return fail("SERVER_INCIDENT_CHANGED",409)}
    }
-   const pending=await c.query("SELECT 1 FROM km_cfd_correction_requests WHERE order_id=$1 AND status='PENDING' LIMIT 1",[orderId]);
-   if(pending.rowCount){await c.query("ROLLBACK");return fail("OLD_PENDING_REQUEST_EXISTS",409)}
+   // Existing review-only requests have no financial effect. Supersede them atomically.
+   const pending=await c.query("UPDATE km_cfd_correction_requests SET status='REJECTED',decided_by=$2,decision_reason='Superseded by authorized direct correction',decided_at=NOW() WHERE order_id=$1 AND status='PENDING' RETURNING id",[orderId,user.id]);
+   for(const previous of pending.rows){
+    await c.query("INSERT INTO km_cfd_correction_audit(id,request_id,actor_id,event,payload) VALUES($1,$2,$3,'SUPERSEDED_BY_DIRECT_CORRECTION',$4::jsonb)",[randomUUID(),previous.id,user.id,JSON.stringify({orderId,reason:"Direct correction superseded unapproved review request"})]);
+   }
    const id=randomUUID();
    await c.query(`INSERT INTO km_cfd_correction_requests(id,user_id,order_id,requested_by,requested_result,reason,evidence,original_result,original_payout_krw,original_exit_price,status,decided_by,decision_reason,decided_at,verified_price,verified_source,adjustment_krw)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'APPROVED',$4,$6,NOW(),$11,$12,$13)`,[id,locked.user_id,orderId,user.id,requested,reason,evidence,o.result,old,o.exit_price,verified.exit,verified.source,delta]);
    if(delta!==0){const w=await c.query("UPDATE km_krw_wallets SET balance=balance+$2,updated_at=NOW() WHERE user_id=$1 AND balance+$2>=0 RETURNING balance",[locked.user_id,delta]);if(!w.rowCount){await c.query("ROLLBACK");return fail("INSUFFICIENT_WALLET_BALANCE",409)}}
    await c.query("UPDATE km_cfd_orders SET result=$2,payout_krw=$3,exit_price=$4 WHERE id=$1",[orderId,verified.result,verified.payout,verified.exit]);
    if(delta!==0)await c.query("INSERT INTO km_krw_ledger(id,user_id,order_id,kind,delta_krw) VALUES($1,$2,$3,$4,$5)",[randomUUID(),locked.user_id,orderId,"CFD_CORRECTION_"+id,delta]);
-   await c.query("INSERT INTO km_cfd_correction_audit(id,request_id,actor_id,event,payload) VALUES($1,$2,$3,'VERIFIED_CORRECTION_APPROVED',$4::jsonb)",[randomUUID(),id,user.id,JSON.stringify({directSave:true,reason,evidence,originalResult:o.result,originalPayout:old,verifiedResult:verified.result,verifiedPrice:verified.exit,verifiedSource:verified.source,newPayout:verified.payout,deltaKrw:delta})]);
+   await c.query("INSERT INTO km_cfd_correction_audit(id,request_id,actor_id,event,payload) VALUES($1,$2,$3,'VERIFIED_CORRECTION_APPROVED',$4::jsonb)",[randomUUID(),id,user.id,JSON.stringify({directSave:true,reason,evidence,marketResult,marketPayout,originalResult:o.result,originalPayout:old,verifiedResult:verified.result,verifiedPrice:verified.exit,verifiedSource:verified.source,newPayout:verified.payout,deltaKrw:delta})]);
    await c.query("COMMIT");return NextResponse.json({ok:true,requestId:id,originalResult:o.result,newResult:verified.result,deltaKrw:delta});
   }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
  }catch(e){console.error("CFD_DIRECT_CORRECTION_FAILED",e);return fail("CORRECTION_FAILED",503)}
