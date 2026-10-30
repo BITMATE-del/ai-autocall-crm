@@ -9,7 +9,7 @@ const entries=[
  {name:"대시보드",href:"/partner",permission:"",icon:LayoutDashboard},
  {name:"소속 회원",href:"/partner/members",permission:"MEMBER_LIST",icon:Users},
  {name:"고객센터 답변",href:"/partner/support",permission:"MEMBER_LIST",icon:MessageCircle},
- {name:"입출금 요청·안내",href:"/partner/funding",permission:"FUNDING_HISTORY",icon:Wallet},
+ {name:"원화·블록체인 입출금",href:"/partner/funding",permission:"FUNDING_APPROVE",icon:Wallet},
  {name:"입금주소 관리",href:"/partner/deposit-addresses",permission:"FUNDING_HISTORY",icon:Wallet},
  {name:"영업자 관리",href:"/partner/agents",permission:"AGENT_CREATE",icon:UserRoundPlus},
  {name:"하부 권한 부여",href:"/partner/permissions",permission:"PERMISSION_DELEGATE",icon:ShieldCheck},
@@ -26,7 +26,7 @@ export default function PartnerShell({children}:{children:React.ReactNode}){
  const [me,setMe]=useState<Me|null>(null),[open,setOpen]=useState(false);
  useEffect(()=>{if(login)return;fetch("/api/partner/me",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>setMe(j)).catch(()=>{})},[login]);
  if(login)return <>{children}</>;
- const visible=entries.filter(x=>!x.permission||me?.permissions.includes(x.permission)||["PURCHASE_CORRECTION","STOCK_EVENT_GRANT","CFD_CORRECTION"].includes(x.permission));
+ const visible=entries.filter(x=>!x.permission||me?.permissions.includes(x.permission)||["PURCHASE_CORRECTION","STOCK_EVENT_GRANT","CFD_CORRECTION","FUNDING_APPROVE"].includes(x.permission));
  return <div className="hpShell"><aside className={"hpSidebar "+(open?"hpOpen":"")}>
  <div className="hpBrand"><span className="hpBrandMark">H</span><div><strong>HFM KOREA</strong><small>PARTNER OFFICE</small></div><button className="hpClose" onClick={()=>setOpen(false)} aria-label="메뉴 닫기"><X size={20}/></button></div>
  <div className="hpLabel">조직 운영</div><nav className="hpNav">{visible.map(e=><Link key={e.href} href={e.href} onClick={()=>setOpen(false)} className={pathname===e.href?"hpActive":""}><e.icon size={18}/>{e.name}{["PURCHASE_CORRECTION","STOCK_EVENT_GRANT","CFD_CORRECTION"].includes(e.permission)&&!me?.permissions.includes(e.permission)&&<small style={{marginLeft:"auto",fontSize:10,opacity:.8}}>권한 필요</small>}</Link>)}</nav>
