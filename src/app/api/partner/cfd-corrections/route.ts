@@ -1,12 +1,12 @@
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,init} from "@/lib/auth";
-import {actorFor} from "@/lib/org-access";
+import {actorFor,permitted} from "@/lib/org-access";
 import {ensureCFDCorrectionAuditImmutable} from "@/lib/cfd-correction-audit";
 export const dynamic="force-dynamic";
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
-async function actor(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org?a:null}
+async function actor(){const u=await currentUser();if(!u?.id)return null;const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"CFD_CORRECTION")?a:null}
 async function ensure(){await init();await database().query(`CREATE TABLE IF NOT EXISTS km_cfd_correction_requests(
  id UUID PRIMARY KEY,user_id UUID NOT NULL REFERENCES km_users(id),order_id UUID NOT NULL REFERENCES km_cfd_orders(id),
  requested_by UUID NOT NULL REFERENCES km_users(id),requested_result TEXT NOT NULL CHECK(requested_result IN ('AUTO','WIN','LOSS','VOID')),
