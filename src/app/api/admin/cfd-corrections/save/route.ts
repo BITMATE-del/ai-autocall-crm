@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {randomUUID} from "node:crypto";
 import {currentUser,database,isAdmin} from "@/lib/auth";
+import {actorFor,memberInScope,permitted} from "@/lib/org-access";
 import {verifyCFDOutcome,type OriginalCFD} from "@/lib/cfd-correction-verify";
 import {runCFDCorrectionSmoke} from "@/lib/cfd-correction-smoke";
 import {ensureCFDCorrectionAuditImmutable} from "@/lib/cfd-correction-audit";
@@ -8,7 +9,7 @@ import {ensureIncidentSchema} from "@/lib/cfd-incident";
 export const dynamic="force-dynamic";
 const uid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail=(error:string,status:number)=>NextResponse.json({error},{status});
-async function privileged(){const u=await currentUser();if(!u?.id||!(await isAdmin(u.id)))return null;const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);return role.rows[0]?.role==="SUPER_ADMIN"?u:null}
+async function privileged(){const u=await currentUser();if(!u?.id)return null;if(await isAdmin(u.id)){const role=await database().query("SELECT role FROM km_admin_roles WHERE user_id=$1",[u.id]);return role.rows[0]?.role==="SUPER_ADMIN"?u:null}const a=await actorFor(u.id);return a?.active&&a.role!=="ADMIN"&&a.org&&await permitted(a,"CFD_CORRECTION")?u:null}
 function originOK(req:Request){const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();try{return !!origin&&new URL(origin).host===host}catch{return false}}
 type Body={orderId?:string;result?:string;reason?:string;evidence?:string;dryRun?:boolean};
 export async function POST(req:Request){
@@ -20,6 +21,7 @@ export async function POST(req:Request){
  try{
   const q=await database().query("SELECT * FROM km_cfd_orders WHERE id=$1",[orderId]);const o=q.rows[0];if(!o)return fail("ORDER_NOT_FOUND",404);
   if(o.status!=="SETTLED")return fail("ORDER_NOT_SETTLED",409);
+  if(!(await isAdmin(user.id))){const actor=await actorFor(user.id);if(!actor?.active||!(await permitted(actor,"CFD_CORRECTION"))||!(await memberInScope(actor,o.user_id)))return fail("ORDER_OUT_OF_SCOPE",403)}
   const original:OriginalCFD={id:o.id,symbol:o.symbol,direction:o.direction,amount_krw:o.amount_krw,entry_price:o.entry_price,exit_price:o.exit_price,result:o.result,payout_krw:o.payout_krw,status:o.status,expires_at:o.expires_at};
   let verified:Awaited<ReturnType<typeof verifyCFDOutcome>>;
   let incidentId:string|null=null;
@@ -45,6 +47,7 @@ export async function POST(req:Request){
    const locked=(await c.query("SELECT * FROM km_cfd_orders WHERE id=$1 FOR UPDATE",[orderId])).rows[0];
    if(!locked||locked.status!=="SETTLED"||String(locked.result)!==String(o.result)||Number(locked.payout_krw||0)!==old||Number(locked.entry_price)!==Number(o.entry_price)||Number(locked.exit_price)!==Number(o.exit_price)){
     await c.query("ROLLBACK");return fail("TRADE_CHANGED_RELOAD",409)}
+   if(!(await isAdmin(user.id))){const actor=await actorFor(user.id);if(!actor?.active||!(await permitted(actor,"CFD_CORRECTION"))||!(await memberInScope(actor,locked.user_id))){await c.query("ROLLBACK");return fail("ORDER_OUT_OF_SCOPE",403)}}
    if(requested==="VOID"){
     const proof=await c.query("SELECT id FROM km_cfd_verified_incidents WHERE id=$1 AND symbol=$2 AND reviewed_at IS NOT NULL AND start_at<=$3 AND end_at>=$4 FOR SHARE",[incidentId,locked.symbol,new Date(new Date(locked.expires_at).getTime()-Number(locked.duration_minutes||3)*60000),locked.expires_at]);
     if(!proof.rowCount){await c.query("ROLLBACK");return fail("SERVER_INCIDENT_CHANGED",409)}
