@@ -1,12 +1,14 @@
 import {NextResponse} from "next/server";
 import {currentUser,database,isAdmin} from "@/lib/auth";
 import {ensureBlockchainSchema} from "@/lib/blockchain-schema";
+import {actorFor,permitted} from "@/lib/org-access";
 export const dynamic="force-dynamic";
 const validAddress=(network:string,address:string)=>network==="TRC20"?/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address):network==="ERC20"&&/^0x[0-9a-fA-F]{40}$/.test(address);
 async function scope(userId:string,organizationId?:string){
  const admin=await isAdmin(userId);
  if(admin&&organizationId&&/^[a-f0-9-]{36}$/i.test(organizationId)){const o=await database().query("SELECT id,type FROM km_organizations WHERE id=$1 AND status='ACTIVE'",[organizationId]);return o.rows[0]||null}
- const r=await database().query("SELECT o.id,o.type FROM km_organization_members m JOIN km_organizations o ON o.id=m.organization_id WHERE m.user_id=$1 AND m.status='ACTIVE' AND o.status='ACTIVE' AND o.type IN ('SUB_HQ','AGENT') LIMIT 1",[userId]);return r.rows[0]||null
+ const a=await actorFor(userId);if(!a?.active||a.role==="ADMIN"||!a.org||!(await permitted(a,"FUNDING_HISTORY")))return null;
+ const r=await database().query("SELECT id,type FROM km_organizations WHERE id=$1 AND status='ACTIVE'",[a.org]);return r.rows[0]||null
 }
 export async function GET(req:Request){const u=await currentUser();if(!u?.id)return NextResponse.json({error:"LOGIN_REQUIRED"},{status:401});try{await ensureBlockchainSchema();const org=await scope(u.id,new URL(req.url).searchParams.get("organizationId")||undefined);if(!org)return NextResponse.json({error:"NO_ORGANIZATION_SCOPE"},{status:403});const [pool,members]=await Promise.all([database().query("SELECT p.id,p.network,p.address,p.status,a.member_id,u.username FROM km_org_deposit_addresses p LEFT JOIN km_member_deposit_addresses a ON a.address_id=p.id LEFT JOIN km_users u ON u.id=a.member_id WHERE p.organization_id=$1 ORDER BY p.created_at DESC LIMIT 200",[org.id]),database().query("SELECT m.user_id,u.username FROM km_member_attributions m JOIN km_users u ON u.id=m.user_id WHERE m.organization_id=$1 ORDER BY u.username LIMIT 250",[org.id])]);return NextResponse.json({organizationId:org.id,addresses:pool.rows,members:members.rows},{headers:{"Cache-Control":"no-store"}})}catch{return NextResponse.json({error:"ADDRESS_SERVICE_UNAVAILABLE"},{status:503})}}
 export async function POST(req:Request){const u=await currentUser();if(!u?.id)return NextResponse.json({error:"LOGIN_REQUIRED"},{status:401});const origin=req.headers.get("origin"),host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||new URL(req.url).host).split(",")[0].trim();if(origin&&new URL(origin).host!==host)return NextResponse.json({error:"INVALID_ORIGIN"},{status:403});let b:any;try{b=await req.json()}catch{return NextResponse.json({error:"INVALID_BODY"},{status:400})}try{await ensureBlockchainSchema();const org=await scope(u.id,b.organizationId);if(!org)return NextResponse.json({error:"NO_ORGANIZATION_SCOPE"},{status:403});
