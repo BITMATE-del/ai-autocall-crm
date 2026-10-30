@@ -33,7 +33,14 @@ export async function POST(req:Request){
    if(!incidentId)return fail("VOID_REQUIRES_VERIFIED_SERVER_INCIDENT",409);
    verified={result:"VOID",payout:Number(o.amount_krw),exit:Number(o.exit_price||o.entry_price),source:"VERIFIED_INCIDENT:"+incidentId,verifiedAt:new Date().toISOString(),expiry:new Date(o.expires_at).toISOString()};
   }else{
-   try{verified=await verifyCFDOutcome(original)}catch(e){return fail(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409)}
+   try{verified=await verifyCFDOutcome(original)}catch(e){
+    if(requested==="AUTO")return fail(e instanceof Error?e.message:"REFERENCE_UNAVAILABLE",409);
+    // Manual WIN/LOSS remains available when retrospective market candles are unavailable.
+    // Never present a stored settlement price as independently verified market data.
+    const exit=Number(o.exit_price||0);
+    if(!Number.isFinite(exit)||exit<=0)return fail("STORED_EXIT_UNAVAILABLE",409);
+    verified={result:String(o.result||"UNKNOWN"),payout:Number(o.payout_krw||0),exit,source:"STORED_SETTLEMENT_NOT_MARKET_VERIFIED",verifiedAt:new Date().toISOString(),expiry:new Date(o.expires_at).toISOString()};
+   }
   }
   // Direct authorized WIN/LOSS corrections are explicit overrides of the verified market outcome.
   // Keep the verified quote separately and audit the decision; VOID still requires an incident.
