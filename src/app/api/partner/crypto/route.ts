@@ -5,7 +5,7 @@ import {ensureBlockchainSchema} from "@/lib/blockchain-schema";
 export const dynamic="force-dynamic";
 export async function GET(){
  const u=await currentUser();if(!u?.id)return NextResponse.json({error:"LOGIN_REQUIRED"},{status:401});
- const a=await actorFor(u.id);if(!a?.active||a.role==="ADMIN"||!a.org||!(await permitted(a,"FUNDING_HISTORY")))return NextResponse.json({error:"FORBIDDEN"},{status:403});
+ const a=await actorFor(u.id);if(!a?.active||a.role==="ADMIN"||!a.org||!(await permitted(a,"FUNDING_HISTORY"))&&!(await permitted(a,"FUNDING_APPROVE")))return NextResponse.json({error:"FORBIDDEN"},{status:403});
  try{await ensureBlockchainSchema();const r=await database().query(
  `SELECT r.id,r.kind,r.network,r.amount_usdt::text,r.amount_krw,r.address,r.status,r.created_at,u.username
  FROM km_crypto_requests r JOIN km_users u ON u.id=r.user_id
