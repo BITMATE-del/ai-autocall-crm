@@ -21,7 +21,14 @@ export async function kisAccessToken(){
   await c.query("CREATE TABLE IF NOT EXISTS km_kis_auth_cache(id TEXT PRIMARY KEY, token_cipher TEXT, expires_at TIMESTAMPTZ, last_attempt_at TIMESTAMPTZ, last_error TEXT)");
   const row=(await c.query("SELECT token_cipher,expires_at,last_attempt_at,last_error FROM km_kis_auth_cache WHERE id='production' FOR UPDATE")).rows[0];
   if(row?.token_cipher&&Date.parse(row.expires_at)>Date.now()+120000){
-   const value=decrypt(row.token_cipher);tokenCache={value,expires:Date.parse(row.expires_at)-60000};await c.query("COMMIT");return value;
+   try{
+    const value=decrypt(row.token_cipher);tokenCache={value,expires:Date.parse(row.expires_at)-60000};await c.query("COMMIT");return value;
+   }catch{
+    // A rotated/account-specific encryption key must not permanently block market data.
+    // Never log the ciphertext or credentials; invalidate only this cached KIS token.
+    console.warn("KIS_TOKEN_CACHE_DECRYPT_FAILED");
+    await c.query("UPDATE km_kis_auth_cache SET token_cipher=NULL,expires_at=NULL,last_error='TOKEN_CACHE_DECRYPT_FAILED',last_attempt_at=NULL WHERE id='production'");
+   }
   }
   if(row?.last_attempt_at&&Date.now()-Date.parse(row.last_attempt_at)<65000){const last=String(row.last_error||"UNKNOWN").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,50);await c.query("COMMIT");throw Error("KIS_AUTH_RATE_LIMIT_WAIT_"+last)}
   await c.query("INSERT INTO km_kis_auth_cache(id,last_attempt_at) VALUES('production',NOW()) ON CONFLICT(id) DO UPDATE SET last_attempt_at=NOW()");
