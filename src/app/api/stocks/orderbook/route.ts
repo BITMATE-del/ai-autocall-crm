@@ -19,9 +19,22 @@ function parse(symbol:string,d:Record<string,string>):Book{
  return {symbol,market:"KRX",asks,bids,totalAsk:number(d.total_askp_rsqn),totalBid:number(d.total_bidp_rsqn),asOf:new Date().toISOString(),source:"KIS_REST"};
 }
 async function readKis(symbol:string){
- const data=await kisMarketRequest("/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn","FHKST01010200",{FID_COND_MRKT_DIV_CODE:"J",FID_INPUT_ISCD:symbol}) as {output1?:Record<string,string>};
- if(!data.output1)throw Error("EMPTY_ORDERBOOK");
- return parse(symbol,data.output1);
+ let last:unknown;
+ for(const market of ["J","UN"]){
+  try{
+   const data=await kisMarketRequest("/uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn","FHKST01010200",{FID_COND_MRKT_DIV_CODE:market,FID_INPUT_ISCD:symbol}) as {output1?:Record<string,string>};
+   if(!data.output1)throw Error("EMPTY_ORDERBOOK");
+   const book=parse(symbol,data.output1);
+   return {...book,market:market==="J"?"KRX":"KRX/NXT"};
+  }catch(e){
+   last=e;
+   const code=e instanceof Error?e.message:"UNKNOWN";
+   // Re-select the market only if the quote is empty or the requested market is unsupported.
+   if(market==="J"&&(code==="EMPTY_ORDERBOOK"||code==="EMPTY_LEVELS"||/^KIS_MARKET_RESPONSE_/.test(code)))continue;
+   break;
+  }
+ }
+ throw last instanceof Error?last:new Error("ORDERBOOK_UPSTREAM_ERROR");
 }
 async function readShared(symbol:string):Promise<Book|null>{
  try{
