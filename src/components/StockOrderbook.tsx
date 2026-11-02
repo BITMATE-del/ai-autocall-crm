@@ -9,7 +9,7 @@ export default function StockOrderbook({symbol}:{symbol:string}){
  const load=async()=>{if(!active||document.visibilityState!=="visible")return;
   controller?.abort();controller=new AbortController();
   try{const response=await fetch("/api/stocks/orderbook?symbol="+encodeURIComponent(symbol),{cache:"no-store",signal:controller.signal});
-   const data=await response.json();if(!response.ok){if(data.marketClosed){if(active){setBook(null);setError("국내주식 정규장이 종료되었습니다. 거래시간에 호가가 다시 표시됩니다.")}return}throw Error(data.error||"조회 실패")}
+   const data=await response.json();if(!response.ok){if(data.marketClosed){if(active){setBook(null);setError("장 마감")}return}throw Error(data.error||"조회 실패")}
    if(active&&data.symbol===symbol){setBook(data);setError("")}
   }catch(e){if(active&&!(e instanceof Error&&e.name==="AbortError")){setError("현재 호가를 확인할 수 없습니다.")}}
   finally{if(active)setLoading(false)}
@@ -23,7 +23,7 @@ export default function StockOrderbook({symbol}:{symbol:string}){
  <div className="panelHeading"><strong>호가창</strong><span className="hfmOrderbookMarket">KIS · KRX</span></div>
  <div className="hfmOrderbookBody"><div className="hfmOrderbookLabels"><span>잔량</span><span>호가</span></div>
  {loading&&!book&&<p className="hfmOrderbookStatus">호가를 조회하고 있습니다.</p>}
- {error&&<p className="hfmOrderbookStatus" role="status">{error}</p>}
+ {error&&<div className="hfmOrderbookStatus" role="status" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"20px 8px",textAlign:"center"}}><strong style={{fontSize:13,fontWeight:700,color:"var(--text-primary, #172b52)"}}>{error}</strong>{error==="장 마감"&&<span style={{fontSize:11,color:"var(--text-muted, #75839c)"}}>정규장 09:00~15:30</span>}</div>}
  {book&&<><div className="hfmOrderbookLevels">{[...book.asks].reverse().map((v,i)=><div className="hfmOrderbookLevel ask" key={"a"+i}><div className="hfmOrderbookBar" style={{width:Math.max(0,Math.min(100,v.qty/max*100))+"%"}}/><span>{fmt(v.qty)}</span><strong>{fmt(v.price)}</strong></div>)}</div>
  <div className="hfmOrderbookSpread"><span>매도 {book.totalAsk==null?"—":fmt(book.totalAsk)}주</span><span>매수 {book.totalBid==null?"—":fmt(book.totalBid)}주</span></div>
  <div className="hfmOrderbookLevels">{book.bids.map((v,i)=><div className="hfmOrderbookLevel bid" key={"b"+i}><div className="hfmOrderbookBar" style={{width:Math.max(0,Math.min(100,v.qty/max*100))+"%"}}/><span>{fmt(v.qty)}</span><strong>{fmt(v.price)}</strong></div>)}</div>
