@@ -9,7 +9,7 @@ export default function StockOrderbook({symbol}:{symbol:string}){
  const load=async()=>{if(!active||document.visibilityState!=="visible")return;
   controller?.abort();controller=new AbortController();
   try{const response=await fetch("/api/stocks/orderbook?symbol="+encodeURIComponent(symbol),{cache:"no-store",signal:controller.signal});
-   const data=await response.json();if(!response.ok)throw Error(data.error||"조회 실패");
+   const data=await response.json();if(!response.ok){if(data.marketClosed){if(active){setBook(null);setError("국내주식 정규장이 종료되었습니다. 거래시간에 호가가 다시 표시됩니다.")}return}throw Error(data.error||"조회 실패")}
    if(active&&data.symbol===symbol){setBook(data);setError("")}
   }catch(e){if(active&&!(e instanceof Error&&e.name==="AbortError")){setError("현재 호가를 확인할 수 없습니다.")}}
   finally{if(active)setLoading(false)}
