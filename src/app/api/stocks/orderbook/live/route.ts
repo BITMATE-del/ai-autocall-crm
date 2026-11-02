@@ -5,7 +5,7 @@ import {database,currentUser} from "@/lib/auth";
 export const dynamic="force-dynamic";
 export const maxDuration=300;
 const db=database;
-const SYMBOL=/^\\d{6}$/;
+const SYMBOL=/^[0-9]{6}$/;
 const KIS_URL="ws://ops.koreainvestment.com:21000";
 const key="hfm-kis-marketdata";
 const n=(v:string)=>{const x=Number(v);return Number.isSafeInteger(x)&&x>=0?x:null};
