@@ -16,5 +16,16 @@ export async function GET(req:NextRequest){
   }
   if(!asks.length&&!bids.length)throw Error("EMPTY_LEVELS");
   return NextResponse.json({symbol,market:"KRX",asks,bids,totalAsk:number(d.total_askp_rsqn),totalBid:number(d.total_bidp_rsqn),asOf:new Date().toISOString(),source:"KIS_REST"},{headers:{"Cache-Control":"private, no-store"}});
- }catch(e){console.error("KIS_ORDERBOOK_FETCH_FAILED",e instanceof Error?e.message:"ERROR");return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE"},{status:503,headers:{"Cache-Control":"no-store"}})}
+ }catch(e){
+  const raw=e instanceof Error?e.message:"UNKNOWN";
+  // Diagnostic codes are intentionally limited to known categories; do not reveal credentials or upstream messages.
+  const reason=raw.startsWith("KIS_AUTH_")||raw==="KIS_NOT_CONFIGURED"||raw==="KIS_TOKEN_STORAGE_NOT_CONFIGURED"?"AUTH":
+   raw==="KIS_MARKET_HTTP_429"?"LIMIT":raw.startsWith("KIS_MARKET_HTTP_")?"HTTP":
+   raw.startsWith("KIS_MARKET_RESPONSE_")?"UPSTREAM":
+   raw==="EMPTY_ORDERBOOK"||raw==="EMPTY_LEVELS"?"EMPTY":"NETWORK";
+  const kst=new Date(Date.now()+9*3600000),day=kst.getUTCDay(),minute=kst.getUTCHours()*60+kst.getUTCMinutes();
+  const marketClosed=day===0||day===6||minute<540||minute>=930;
+  console.error("KIS_ORDERBOOK_FETCH_FAILED",{symbol,reason,marketClosed,detail:raw.slice(0,70)});
+  return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE",reason,marketClosed},{status:503,headers:{"Cache-Control":"no-store"}});
+ }
 }
