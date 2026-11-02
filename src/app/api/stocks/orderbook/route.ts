@@ -26,6 +26,7 @@ export async function GET(req:NextRequest){
   const kst=new Date(Date.now()+9*3600000),day=kst.getUTCDay(),minute=kst.getUTCHours()*60+kst.getUTCMinutes();
   const marketClosed=day===0||day===6||minute<540||minute>=930;
   console.error("KIS_ORDERBOOK_FETCH_FAILED",{symbol,reason,marketClosed,detail:raw.slice(0,70)});
-  return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE",reason,marketClosed},{status:503,headers:{"Cache-Control":"no-store"}});
+  const authDetail=reason==="AUTH"?(raw==="KIS_NOT_CONFIGURED"?"CONFIG":raw==="KIS_TOKEN_STORAGE_NOT_CONFIGURED"?"STORAGE":raw.startsWith("KIS_AUTH_RATE_LIMIT_WAIT_")?"RETRY_WAIT":raw.startsWith("KIS_AUTH_")?"TOKEN_ISSUE":"OTHER"):undefined;
+  return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE",reason,...(authDetail?{authDetail}:{}),marketClosed},{status:503,headers:{"Cache-Control":"no-store"}});
  }
 }
