@@ -69,17 +69,48 @@ export async function getKisStockQuote(symbol:string):Promise<KrQuote>{
  return {symbol,price,previousClose,asOf,provider:"KIS_REST",marketStatus:day>=1&&day<=5&&minutes>=540&&minutes<930?"REGULAR_SESSION":"CLOSED"};
 }
 
+/** Only a token actually rejected by KIS may be invalidated. Keep other instances' new tokens. */
+async function discardRejectedKisToken(rejected:string){
+ tokenCache=undefined;
+ const c=await database().connect();
+ try{
+  await c.query("BEGIN");
+  await c.query("SELECT pg_advisory_xact_lock(203306, 101)");
+  const row=(await c.query("SELECT token_cipher FROM km_kis_auth_cache WHERE id='production' FOR UPDATE")).rows[0];
+  if(row?.token_cipher){
+   let stored:string|null=null;
+   try{stored=decrypt(row.token_cipher)}catch{}
+   if(stored===rejected){
+    await c.query("UPDATE km_kis_auth_cache SET token_cipher=NULL,expires_at=NULL,last_attempt_at=NULL,last_error='UPSTREAM_TOKEN_REJECTED' WHERE id='production'");
+   }
+  }
+  await c.query("COMMIT");
+ }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
+}
 export async function kisMarketRequest(path:string,trId:string,params:Record<string,string>){
  const key=process.env.KIS_APP_KEY,secret=process.env.KIS_APP_SECRET;
  if(!key||!secret)throw Error("KIS_NOT_CONFIGURED");
- const access=await kisAccessToken();
  const url=new URL(host+path);
  for(const [k,v] of Object.entries(params))url.searchParams.set(k,v);
- const r=await fetch(url,{cache:"no-store",headers:{"authorization":"Bearer "+access,"appkey":key,"appsecret":secret,"tr_id":trId,"custtype":"P"},signal:AbortSignal.timeout(8500)});
- if(!r.ok)throw Error("KIS_MARKET_HTTP_"+r.status);
- const body=await r.json();
- if(body?.rt_cd!=="0")throw Error("KIS_MARKET_RESPONSE_"+String(body?.msg_cd||"ERROR"));
- return body as {rt_cd:string;output1?:Record<string,string>;output2?:Record<string,string>[]};
+ for(let attempt=0;attempt<2;attempt++){
+  const access=await kisAccessToken();
+  const r=await fetch(url,{cache:"no-store",headers:{"authorization":"Bearer "+access,"appkey":key,"appsecret":secret,"tr_id":trId,"custtype":"P"},signal:AbortSignal.timeout(8500)});
+  if((r.status===401||r.status===403)&&attempt===0){
+   await discardRejectedKisToken(access);continue;
+  }
+  if(!r.ok)throw Error("KIS_MARKET_HTTP_"+r.status);
+  const body=await r.json();
+  const code=String(body?.msg_cd||"ERROR");
+  if(body?.rt_cd!=="0"){
+   // An expired/revoked token can also be reported inside a 200 response.
+   if(attempt===0&&/EGW0012[013]|TOKEN|OAUTH/i.test(code)){
+    await discardRejectedKisToken(access);continue;
+   }
+   throw Error("KIS_MARKET_RESPONSE_"+code.replace(/[^a-zA-Z0-9_-]/g,"").slice(0,40));
+  }
+  return body as {rt_cd:string;output1?:Record<string,string>;output2?:Record<string,string>[]};
+ }
+ throw Error("KIS_MARKET_AUTH_RETRY_EXHAUSTED");
 }
 
 /** Trade authorization requires a dated, recent official KIS execution, never receipt time. */
