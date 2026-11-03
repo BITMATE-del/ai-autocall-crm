@@ -27,6 +27,10 @@ export async function GET(req:NextRequest){
   const marketClosed=day===0||day===6||minute<540||minute>=930;
   console.error("KIS_ORDERBOOK_FETCH_FAILED",{symbol,reason,marketClosed,detail:raw.slice(0,70)});
   const authDetail=reason==="AUTH"?(raw==="KIS_NOT_CONFIGURED"?"CONFIG":raw==="KIS_TOKEN_STORAGE_NOT_CONFIGURED"?"STORAGE":raw.startsWith("KIS_AUTH_RATE_LIMIT_WAIT_")?"RETRY_WAIT":raw.startsWith("KIS_AUTH_")?"TOKEN_ISSUE":"OTHER"):undefined;
-  return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE",reason,...(authDetail?{authDetail}:{}),marketClosed},{status:503,headers:{"Cache-Control":"no-store"}});
+  const waiting=raw.match(/^KIS_AUTH_RATE_LIMIT_WAIT_([A-Za-z0-9_-]{1,50})_SEC([0-9]{1,3})$/);
+  const providerCode=(waiting?.[1]||raw.match(/^KIS_AUTH_([A-Za-z0-9_-]{1,50})$/)?.[1]||"");
+  const authCode=/^(EGW[0-9]{5}|HTTP_[0-9]{3}|TOKEN_CACHE_DECRYPT_FAILED|UPSTREAM_TOKEN_REJECTED|UNKNOWN)$/.test(providerCode)?providerCode:undefined;
+  const retryAfterSec=waiting?Math.min(65,Number(waiting[2])):undefined;
+  return NextResponse.json({error:"ORDERBOOK_UNAVAILABLE",reason,...(authDetail?{authDetail}:{}),...(authCode?{authCode}:{}),...(retryAfterSec?{retryAfterSec}:{}),marketClosed},{status:503,headers:{"Cache-Control":"no-store"}});
  }
 }
