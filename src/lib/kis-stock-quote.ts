@@ -89,7 +89,7 @@ async function discardRejectedKisToken(rejected:string){
    let stored:string|null=null;
    try{stored=decrypt(row.token_cipher)}catch{}
    if(stored===rejected){
-    await c.query("UPDATE km_kis_auth_cache SET token_cipher=NULL,expires_at=NULL,last_attempt_at=NULL,last_error='UPSTREAM_TOKEN_REJECTED' WHERE id='production'");
+    await c.query("UPDATE km_kis_auth_cache SET token_cipher=NULL,expires_at=NULL,last_error='UPSTREAM_TOKEN_REJECTED' WHERE id='production'");
    }
   }
   await c.query("COMMIT");
