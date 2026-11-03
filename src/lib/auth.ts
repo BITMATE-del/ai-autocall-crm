@@ -55,6 +55,31 @@ export async function bootstrapAdmin(password:string){
   await c.query("COMMIT");
  }catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}
 }
+/** One-time admin credential recovery, enabled only by a separate temporary server secret.
+ * A used credential is stored as a digest and cannot be replayed, even if left in Vercel.
+ */
+export async function recoverAdminPassword(password:string){
+ const reset=process.env.KM_ADMIN_RESET_PASSWORD;
+ if(!reset||reset.length<12||password!==reset)return false;
+ const digest=createHash("sha256").update("km-admin-reset:v1:"+reset).digest("hex");
+ const c=await database().connect();
+ try{
+  await c.query("BEGIN");
+  await c.query("SELECT pg_advisory_xact_lock(82110513)");
+  await c.query("CREATE TABLE IF NOT EXISTS km_admin_password_reset_uses(token_hash TEXT PRIMARY KEY,used_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  const user=(await c.query("SELECT id FROM km_users WHERE lower(username)='admin' LIMIT 1 FOR UPDATE")).rows[0];
+  if(!user){await c.query("ROLLBACK");return false}
+  const claimed=await c.query("INSERT INTO km_admin_password_reset_uses(token_hash) VALUES($1) ON CONFLICT DO NOTHING RETURNING token_hash",[digest]);
+  if(!claimed.rowCount){await c.query("ROLLBACK");return false}
+  const hash=await bcrypt.hash(password,12);
+  await c.query("UPDATE km_users SET password_hash=$1 WHERE id=$2",[hash,user.id]);
+  await c.query("CREATE TABLE IF NOT EXISTS km_admin_roles(user_id UUID PRIMARY KEY REFERENCES km_users(id),role TEXT NOT NULL DEFAULT 'SUPER_ADMIN',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  await c.query("INSERT INTO km_admin_roles(user_id) VALUES($1) ON CONFLICT DO NOTHING",[user.id]);
+  await c.query("COMMIT");
+  return true;
+ }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
+}
+
 export async function isAdmin(id:string|undefined){if(!id)return false;const allow=(process.env.KM_ADMIN_USER_IDS||"").split(",").map(x=>x.trim());if(allow.includes(id))return true;try{const r=await database().query("SELECT 1 FROM km_admin_roles WHERE user_id=$1 LIMIT 1",[id]);return !!r.rowCount}catch{return false}}
 
 /** Verify a signed admin-login session locally; sensitive APIs still check the live DB role. */
