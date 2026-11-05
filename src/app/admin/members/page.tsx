@@ -18,7 +18,7 @@ async function resetPassword(){
  setBusy(true);setError("");setTemporaryPassword("");
  try{
   const r=await fetch("/api/admin/members/reset-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:chosen.id}),signal:AbortSignal.timeout(15000)});
-  const j=await r.json();if(!r.ok)throw Error(j.error==="STAFF_TARGET_DENIED"?"조직 담당자 계정은 회원 비밀번호 초기화 기능으로 변경할 수 없습니다. 조직 계정 관리에서 처리해야 합니다.":j.error==="ADMIN_TARGET_DENIED"?"관리자 계정의 비밀번호는 이 화면에서 초기화할 수 없습니다.":j.error||"비밀번호 초기화 실패");
+  const j=await r.json();if(!r.ok)throw Error(j.error==="STAFF_TARGET_DENIED"?"비밀번호 초기화 대상의 권한을 확인해 주세요.":j.error==="ADMIN_TARGET_DENIED"?"본사 관리자 계정은 별도 관리자 복구 기능에서 변경해 주세요.":j.error||"비밀번호 초기화 실패");
   setTemporaryPassword(j.temporaryPassword);
  }catch(e){setError(e instanceof Error?e.message:"비밀번호 초기화 실패")}finally{setBusy(false)}
 }
