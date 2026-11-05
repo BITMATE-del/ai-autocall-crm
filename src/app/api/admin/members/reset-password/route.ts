@@ -21,8 +21,7 @@ export async function POST(req:NextRequest){
   const target=await c.query("SELECT id,username FROM km_users WHERE id=$1 FOR UPDATE",[id]);
   if(!target.rowCount){await c.query("ROLLBACK");return NextResponse.json({error:"MEMBER_NOT_FOUND"},{status:404})}
   const privileged=await c.query("SELECT 1 FROM km_admin_roles WHERE user_id=$1",[id]);
-  const org=await c.query("SELECT 1 FROM km_organization_members WHERE user_id=$1",[id]);
-  if(privileged.rowCount||org.rowCount){await c.query("ROLLBACK");return NextResponse.json({error:"STAFF_TARGET_DENIED"},{status:403})}
+  if(privileged.rowCount){await c.query("ROLLBACK");return NextResponse.json({error:"ADMIN_TARGET_DENIED"},{status:403})}
   await c.query("UPDATE km_users SET password_hash=$2 WHERE id=$1",[id,hash]);
   await c.query("CREATE TABLE IF NOT EXISTS km_admin_member_audit(id UUID PRIMARY KEY,admin_id UUID NOT NULL REFERENCES km_users(id),member_id UUID NOT NULL REFERENCES km_users(id),action TEXT NOT NULL,detail JSONB NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await c.query("INSERT INTO km_admin_member_audit(id,admin_id,member_id,action,detail) VALUES($1,$2,$3,'PASSWORD_RESET',$4::jsonb)",[randomUUID(),admin.id,id,JSON.stringify({method:"ADMIN_RANDOM_TEMP_PASSWORD",member:target.rows[0].username})]);
