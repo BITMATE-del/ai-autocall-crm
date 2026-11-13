@@ -56,6 +56,7 @@ const loadStockResults=async()=>{try{const r=await fetch("/api/stocks/results",{
 useEffect(()=>{if(market==="STOCK")void loadStockResults()},[market]);
 const placePaperOrder=async()=>{
  if(market!=="STOCK"||side==="wait")return setNotice("거래 방향을 선택해 주세요.");
+ if(side==="sell"){const holding=internal?.positions?.find(p=>p.symbol===selected);const available=Number(holding?.sellable_qty??holding?.qty??0);if(Number(qty)>available&&Number(holding?.locked_qty||0)>0)return setNotice("이벤트 지급주식은 지급 후 21일간 판매할 수 없습니다. 현재 판매 가능 "+fmt(available)+"주");}
  if(verifiedQuote?.symbol!==selected){try{const response=await fetch("/api/stocks/quote?symbol="+encodeURIComponent(selected),{cache:"no-store"});const result=await response.json();if(response.ok&&result.quote?.symbol===selected){setVerifiedQuote(result.quote)}else{return setNotice("주문용 시세를 불러오지 못했습니다: "+(result.error||"시세 조회 불가"))}}catch{return setNotice("주문용 시세 조회에 실패했습니다.")}}
  if(orderType!=="시장가")return setNotice("현재는 시장가 주문만 이용할 수 있습니다.");
  if(!/^[1-9]\d{0,5}$/.test(qty))return setNotice("1~999999주의 정수 수량을 입력하세요.");
