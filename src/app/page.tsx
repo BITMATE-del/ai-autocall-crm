@@ -51,7 +51,7 @@ useEffect(()=>{if(market!=="STOCK"){setNaverData(null);return}const ctl=new Abor
 
 useEffect(()=>{void fetch("/api/stocks/trade",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{if(j)setInternal(j)}).catch(()=>{})},[]);
 useEffect(()=>{if(market!=="STOCK"){setVerifiedQuote(null);return}let dead=false;let inFlight=false;const load=async()=>{if(inFlight)return;inFlight=true;const controller=new AbortController();try{const r=await fetch("/api/stocks/quote?symbol="+encodeURIComponent(selected),{cache:"no-store",signal:controller.signal});const j=await r.json();if(!dead)setVerifiedQuote(r.ok&&j.quote?j.quote:null)}catch{if(!dead)setVerifiedQuote(null)}finally{inFlight=false}};void load();const timer=setInterval(()=>void load(),10000);return()=>{dead=true;clearInterval(timer)}},[market,selected]);
-const loadStockResults=async()=>{try{const r=await fetch("/api/stocks/results",{cache:"no-store"});const j=await r.json();if(!r.ok)throw Error(j.error||"조회 오류");setStockResults(j.results||[]);setStockResultError("")}catch{setStockResultError("거래 내역을 불러오지 못했습니다.")}};
+const loadStockResults=async()=>{try{const r=await fetch("/api/stocks/results",{cache:"no-store"});const j=await r.json().catch(()=>null);if(r.status===401){setStockResultError("로그인 상태를 확인해 주세요.");return}if(!r.ok||!j){setStockResultError("거래 내역 조회에 실패했습니다. 새로고침을 눌러 다시 확인해 주세요.");return}setStockResults(j.results||[]);setStockResultError("")}catch{setStockResultError("거래 내역 조회에 실패했습니다. 새로고침을 눌러 다시 확인해 주세요.")}};
 useEffect(()=>{if(market==="STOCK")void loadStockResults()},[market]);
 const placePaperOrder=async()=>{
  if(market!=="STOCK"||side==="wait")return setNotice("거래 방향을 선택해 주세요.");
