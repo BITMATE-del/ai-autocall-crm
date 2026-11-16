@@ -7,7 +7,7 @@ const inp={padding:"10px 12px",border:"1px solid #dce3ec",borderRadius:8,backgro
 export default function PartnerCorrections(){
  const defaultReason="담당자 직접 판정보정";
  const[orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Order|null>(null),[query,setQuery]=useState(""),[mode,setMode]=useState("AUTO"),[reason,setReason]=useState(defaultReason),[message,setMessage]=useState(""),[busy,setBusy]=useState(false),[preview,setPreview]=useState<Preview|null>(null);
- async function load(){setBusy(true);try{const r=await fetch("/api/partner/cfd-corrections?q="+encodeURIComponent(query),{cache:"no-store",signal:AbortSignal.timeout(12000)});const j=await r.json();if(!r.ok)throw Error(j.error||"조회 실패");setOrders(j.orders||[])}catch(e){setMessage(e instanceof Error?e.message:"거래 조회 실패")}finally{setBusy(false)}}
+ async function load(){setBusy(true);try{const r=await fetch("/api/partner/cfd-corrections?q="+encodeURIComponent(query),{cache:"no-store",signal:AbortSignal.timeout(12000)});const j=await r.json().catch(()=>null);if(!r.ok)throw Error(r.status===403?"CFD 판정보정 권한이 없습니다.":r.status===503?"거래 목록을 불러오지 못했습니다. 다시 조회해 주세요.":"거래 조회에 실패했습니다.");setOrders(j?.orders||[]);setMessage("")}catch(e){setMessage(e instanceof Error?e.message:"거래 조회 실패")}finally{setBusy(false)}}
  useEffect(()=>{void load()},[]);
  function open(o:Order){setSelected(o);setMode("AUTO");setReason(defaultReason);setPreview(null);setMessage("")}
  async function apply(dryRun:boolean){if(!selected||busy)return;
@@ -28,7 +28,7 @@ export default function PartnerCorrections(){
  <div style={{overflowX:"auto",background:"#fff",borderRadius:10,border:"1px solid #dce3ec"}}>
  <table style={{width:"100%",minWidth:750,borderCollapse:"collapse",fontSize:13}}><thead><tr>{["회원","거래 ID","종목 · 방향","금액","거래 상태","판정","관리"].map(k=><th key={k} style={{textAlign:"left",padding:13,borderBottom:"1px solid #dce3ec"}}>{k}</th>)}</tr></thead>
  <tbody>{orders.map(o=><tr key={o.id} style={{borderBottom:"1px solid #edf1f6"}}><td style={{padding:12}}>{o.username}</td><td style={{padding:12}}>{o.id.slice(0,8)}</td><td style={{padding:12}}>{o.symbol} · {o.direction}</td><td style={{padding:12}}>{fmt(o.amount_krw)}원</td><td style={{padding:12}}>{o.status}</td><td style={{padding:12}}>{o.result||"대기"}</td><td style={{padding:12}}><button type="button" onClick={()=>open(o)} style={{...inp,cursor:"pointer"}}>판정보정</button></td></tr>)}</tbody></table>
- {orders.length===0&&!busy&&<p style={{padding:20,color:"#64748b"}}>조회된 거래가 없습니다.</p>}</div>
+ {orders.length===0&&!busy&&!message&&<p style={{padding:20,color:"#64748b"}}>조회된 거래가 없습니다.</p>}</div>
  {selected&&<section style={{marginTop:18,padding:20,maxWidth:750,background:"#fff",border:"1px solid #dce3ec",borderRadius:10}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2 style={{fontSize:18,fontWeight:800}}>판정보정 · {selected.username}</h2><button type="button" onClick={()=>setSelected(null)}>닫기 ✕</button></div>
  <p style={{fontSize:13,color:"#64748b",lineHeight:1.8,margin:"12px 0"}}>{selected.symbol} · {selected.direction} · {fmt(selected.amount_krw)}원<br/>거래 ID: {selected.id}<br/>현재 판정: {selected.result||selected.status}</p>
