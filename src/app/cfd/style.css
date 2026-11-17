@@ -58,3 +58,10 @@
 .ct .choice button.time.active{background:#e8f0ff;border:2px solid #3468ba;color:#2056a5;font-weight:800;box-shadow:inset 0 0 0 1px rgba(52,104,186,.10)}
 .ct .choice button.time.active svg{color:#2056a5;stroke-width:2.5}
 .ct .choice button.time:focus-visible{outline:3px solid #92b5ed;outline-offset:2px}
+
+/* Always show both trade directions at the actual order action area. */
+.ct .cfdOrderActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%}
+.ct .cfdOrderActions .submit{min-width:0;width:100%;height:48px;font-size:14px;white-space:nowrap}
+.ct .cfdOrderActions .submitUp:not(:disabled){background:#3468ba}
+.ct .cfdOrderActions .submitDown:not(:disabled){background:#c34b63}
+@media(max-width:440px){.ct .cfdOrderActions{gap:8px}.ct .cfdOrderActions .submit{height:50px;padding:0 5px;font-size:13px;letter-spacing:-.35px}}
